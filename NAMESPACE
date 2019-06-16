@@ -1,0 +1,11 @@
+useDynLib(durmod, .registration=TRUE)
+export(mphcrm,mphcrm.control)
+export(a2p,a2logp,p2a)
+export(collin)
+export(exclude)
+
+S3method(relist,mphcrm.pset)
+S3method(unlist,mphcrm.pset)
+S3method(coef,mphcrm.pset)
+S3method(print,mphcrm.pset)
+importFrom(Rcpp, evalCpp)

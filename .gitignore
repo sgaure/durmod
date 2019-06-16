@@ -1,0 +1,14 @@
+# binaries
+*.[oa]
+*.la
+*.lo
+*.so
+*.so.*
+*.d
+# package files
+*.tar.gz
+*.build
+*.Rcheck
+*.cache
+# emacs backup
+*~

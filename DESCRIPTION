@@ -1,0 +1,14 @@
+Package: durmod
+Type: Package
+Title: Mixed proportional hazard competing risk model
+Version: 1.0
+Date: 2019-06-15
+Author: Simen Gaure <simen@gaure.no>
+Maintainer: Simen Gaure <simen@gaure.no>
+Description: Estimation of mixed proportional hazard competing risk model
+License: Artistic-2.0
+Imports: Rcpp (>= 1.0.1)
+Depends: Formula
+LinkingTo: Rcpp
+Encoding: UTF-8
+RoxygenNote: 6.1.1
