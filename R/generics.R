@@ -1,19 +1,23 @@
-coef.mphcrm.pset <- function(pset, ...) {
-  pars <- unlist(lapply(pset$parset, function(pp) {
+#' @method coef mphcrm.pset
+#' @export
+coef.mphcrm.pset <- function(object, ...) {
+  pars <- unlist(lapply(object$parset, function(pp) {
     c(pp$pars,unlist(pp$facs))
   }))
-  mus <- unlist(lapply(pset$parset, function(pp) {
+  mus <- unlist(lapply(object$parset, function(pp) {
     pp$mu
   }))
-  probs <- a2p(pset$pargs)
+  probs <- a2p(object$pargs)
   names(probs) <- paste('P',seq_along(probs),sep='')
   c(pars,mus,probs)
 }
 
-print.mphcrm.pset <- function(pset, ...) {
+#' @method print mphcrm.pset
+#' @export
+print.mphcrm.pset <- function(x, ...) {
   mus <- NULL
   vecs <- NULL
-  parset <- pset$parset
+  parset <- x$parset
   for(p in seq_along(parset)) {
     # collect parameters
     tn <- names(parset)[p]
@@ -21,19 +25,21 @@ print.mphcrm.pset <- function(pset, ...) {
     vec <- pp$pars
     names(vec) <- paste(names(vec), tn,sep='_')
     facs <- unlist(pp$facs)
-    names(facs) <- sapply(seq_along(facs), function(ff) paste(names(facs)[ff],levels(facs[ff]),'_',tn,sep=''))
+    if(!is.null(facs))
+      names(facs) <- sapply(seq_along(facs), function(ff) paste(names(facs)[ff],levels(facs[ff]),'_',tn,sep=''))
     vecs <- c(vecs,vec,facs)
     mu <- pp$mu
     names(mu) <- paste(names(mu), tn, sep='_')
     vecs <- c(vecs,mu)
   }
-  probs <- a2p(pset$pargs)
+  probs <- a2p(x$pargs)
   names(probs) <- paste('P',seq_along(probs),sep='')
   print(data.frame(vecs))
   print(probs)
 }
 
-unlist.mphcrm.pset <- function(x, recursive=TRUE, use.names=TRUE, exclude=attr(x,'exclude')) {
+#' @export
+flatten <- function(x, recursive=TRUE, use.names=TRUE, exclude=attr(x,'exclude')) {
   class(x) <- setdiff(class(x),'mphcrm.pset')
   vec <- unlist(x, TRUE, use.names)
   skel <- attr(vec,'skeleton')
@@ -52,8 +58,8 @@ unlist.mphcrm.pset <- function(x, recursive=TRUE, use.names=TRUE, exclude=attr(x
   structure(vec,exclude=exc)
 }
 
-relist.mphcrm.pset <- function(flesh, skeleton=attr(flesh, 'skeleton'), exclude=attr(flesh,'exclude')) {
-
+#' @export
+unflatten <- function(flesh, skeleton=attr(flesh, 'skeleton'), exclude=attr(flesh,'exclude')) {
   class(skeleton) <- setdiff(class(skeleton),'mphcrm.pset')
   ne <- length(exclude)
   if(ne == 0) {

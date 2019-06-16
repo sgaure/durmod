@@ -7,5 +7,16 @@
 #' which is initialized from the environment variable \env{DURMOD_THREADS}, \env{OMP_THREAD_LIMIT},
 #' \env{OMP_NUM_THREADS} or \env{NUMBER_OF_PROCESSORS}, or parallel::detectCores() upon loading the package.
 #'
+#' @name durmod-package
+#' @aliases durmod
+#' @docType package
+#' @useDynLib durmod, .registration=TRUE
+#' @importFrom Rcpp evalCpp
+#' @import 'stats'
+#' @import 'utils'
+#' @importFrom Formula as.Formula
+#' @importFrom nloptr nloptr
+#' @importFrom numDeriv grad hessian jacobian
+#' @importFrom parallel detectCores
 NULL
 

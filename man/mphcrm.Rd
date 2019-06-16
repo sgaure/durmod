@@ -4,8 +4,8 @@
 \alias{mphcrm}
 \title{Estimate a mixed proportional hazard model}
 \usage{
-mphcrm(formula, data, id, durvar, state, risksets = NULL,
-  callback = NULL, subset, na.action, control = mphcrm.control())
+mphcrm(formula, data, id, durvar, state, risksets = NULL, subset,
+  na.action, control = mphcrm.control())
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.
@@ -37,14 +37,11 @@ which risks are present.}
 \item{risksets}{A list of integer vectors. Each vector is a list of transitions, which risks are present for
 the observation.}
 
-\item{callback}{A user-specified function which is called after each optimization step.
-It can be used to report what is happening, check whatever it wants, and optionally stop
-the estimation by calling stop(). In this case, \code{mphcrm()} will return with the
-most recently estimated set of parameters.}
-
 \item{subset}{For specifying a subset of the dataset, similar to \code{\link{lm}}.}
 
 \item{na.action}{For handling of missing cases, similar to \code{\link{lm}}.}
+
+\item{control}{List of control parameters for the estimation. See \code{\link{mphcrm.control}}.}
 }
 \value{
 [TBS]

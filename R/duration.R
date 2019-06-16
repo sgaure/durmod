@@ -62,22 +62,20 @@
 #' @param risksets
 #' A list of integer vectors. Each vector is a list of transitions, which risks are present for
 #' the observation.
-#' @param callback
-#' A user-specified function which is called after each optimization step.
-#' It can be used to report what is happening, check whatever it wants, and optionally stop
-#' the estimation by calling stop(). In this case, \code{mphcrm()} will return with the
-#' most recently estimated set of parameters.
 #' @param subset
 #' For specifying a subset of the dataset, similar to \code{\link{lm}}.
 #' @param na.action
 #' For handling of missing cases, similar to \code{\link{lm}}.
+#' @param control
+#' List of control parameters for the estimation. See \code{\link{mphcrm.control}}.
 #' @return
 #' [TBS]
 #' @details
 #' [TBS]
+#' @export
 mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
-                   callback=NULL,subset, na.action, control=mphcrm.control()) {
-  F <- as.Formula(formula)
+                   subset, na.action, control=mphcrm.control()) {
+  F <- Formula::as.Formula(formula)
   if(missing(id)) stop('id must be specified')
   environment(F) <- environment(formula)
   # d ~ x + y | z | w ...
@@ -163,33 +161,69 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   }
   
     
-  if(!is.null(callback))  if(!is.function(callback)) stop('callback must be a function(fromwhere,pset,spec,...)')
-  if(is.null(callback)) callback <- function(...){TRUE}
+
   pset <- makeparset(spec,1)
-  pointiter(spec,pset,callback,control)
+  pointiter(spec,pset,control)
 }
 
 #' Control parameters for mphcrm
-#' 
+#'
+#' @description
+#' Modify the default estimation parameters for \code{\link{mphcrm}}
 #' @param ...
-#' parameters to change
+#' parameters to change \itemize{
+#'   \item \code{callback}
+#'   A user-specified \code{function(fromwhere, opt, spec)} which is called after each optimization step.
+#'   It can be used to report what is happening, check whatever it wants, and optionally stop
+#'   the estimation by calling stop(). In this case, \code{mphcrm()} will return with the
+#'   most recently estimated set of parameters. See the help on \code{\link{callback_default}} for information
+#'   on the argument.
+#' }
 #' @return
 #' list of control parameters suitable for the \code{control} argument of \code{\link{mphcrm}}
-
+#' @details
+#' [TBS]
+#' @export
 mphcrm.control <- function(...) {
-  ctrl <- list(iters=12,threads=getOption('durmod.threads'),fisher=TRUE, hessian=FALSE, 
-               gdiff=TRUE)
+  ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
+               gdiff=TRUE, callback=callback_default)
   args <- list(...)
   nm <- names(ctrl)[names(ctrl) %in% names(args)]
   ctrl[nm] <- args[nm]
   ctrl
 }
 
-pointiter <- function(spec,pset,callback,control) {
+#' Default callback function for mphcrm
+#' @export
+callback_default <- function(fromwhere,opt,spec) {
+  
+  if(opt$convergence != 0) {
+    message(date(), ' ', fromwhere, ' optimization failed to converge: ',opt$message,'(',opt$convergence,')')
+  }
+  if(!identical(fromwhere, 'full')) {message(date(), ' optimized ',fromwhere);return(TRUE)}
+  if(!is.null(opt$fisher)) {
+    rc <- rcond(opt$fisher)
+  } else {
+    rc <- NA
+  }
+  if(!is.null(opt$gradient)) {
+    grd <- sqrt(sum(opt$gradient^2))
+  } else {
+    grd <- NA
+  }
+  probs <- a2p(opt$par$pargs)
+  message(date(), sprintf(' loglik %.4f grad %.3g minprob %.4g rcond %.2g (%d points)',
+                          -opt$value, grd, min(probs), rc, length(opt$par$pargs)+1))
+  if(rc < 1e-12) {message(sprintf('  ***bad condition: %.2e',rc)); return(FALSE)}
+  return(TRUE)
+}
+
+
+pointiter <- function(spec,pset,control) {
   # optimize null model first
-  arg0 <- unlist(pset)
+  arg0 <- flatten(pset)
   arg0[] <- 0
-  pset <- relist(arg0)
+  pset <- unflatten(arg0)
   LL0 <- function(arg,spec,pset) {
     for(i in seq_along(pset$parset)) {
       pset$parset[[i]]$mu[] <- arg[i]
@@ -202,16 +236,13 @@ pointiter <- function(spec,pset,callback,control) {
     pset$parset[[i]]$mu[] <- opt0$par[i]
   }
   opt0$par <- pset
-  callback('nullmodel',opt0,spec)
-#  opt <- ml(spec,pset)
-#  if(!callback('full',opt,spec)) {message('Callback said stop');return(opt)}
-#  message(date(), sprintf(' value %.4f (1 point)',opt$value))
+  control$callback('nullmodel',opt0,spec)
   intr <- FALSE
   iopt <- opt <- opt0 
   tryCatch(
     for(i in seq_len(control$iters)) {
       opt <- ml(spec,pset,control)
-      callback('full',opt, spec)
+      control$callback('full',opt, spec)
       pset <- addpoint(spec,opt$par,opt$value,control)
     },
     error=function(...) {
@@ -236,7 +267,7 @@ optprobs <- function(spec,pset,control) {
   aopt <- optim(pset$pargs,pfun,method='BFGS',control=list(trace=0,REPORT=1,factr=10))
 #  message('probs:',sprintf(' %.7f',a2p(aopt$par)), ' value: ',aopt$value)
   pset$pargs[] <- aopt$par
-  callback('prob',aopt,spec)
+  control$callback('prob',aopt,spec)
   pset
 }
 
@@ -263,7 +294,7 @@ optdist <- function(spec,pset,control) {
     pos <- pos+n+1
   }
   dopt$par <- pset
-  callback('dist',dopt,spec)
+  control$callback('dist',dopt,spec)
   pset
 }
 
@@ -347,19 +378,19 @@ addpoint <- function(spec,pset,value,control) {
 }
 
 ml <- function(spec,pset,control) {
-  args <- unlist(pset)
+  args <- flatten(pset)
   skel <- attr(args,'skel')
   LL <- function(args,spec,skel) {
-    pset <- relist(args,skel)
+    pset <- unflatten(args,skel)
     -cloglik(spec,pset,nthreads=control$threads)
   }
   gLL <- function(args,spec,skel) {
-    pset <- relist(args,skel)
+    pset <- unflatten(args,skel)
     -attr(cloglik(spec,pset,dogradient=TRUE,nthreads=control$threads),'gradient')
   }
 
   fLL <- function(args, spec, skel) {
-    pset <- relist(args,skel)
+    pset <- unflatten(args,skel)
     -attr(cloglik(spec,pset,dofisher=TRUE,nthreads=control$threads),'fisher')
   }
   hLL <- function(args, spec, skel) {
@@ -398,7 +429,7 @@ ml <- function(spec,pset,control) {
   opt <- optim(args,LL,gLL,method='BFGS',
                control=list(trace=0,REPORT=10,maxit=500,lmm=60,abstol=1e-4,reltol=1e-14),
                spec=spec,skel=skel)
-  sol <- relist(opt$par)
+  sol <- unflatten(opt$par)
 
   # reorder the masspoints, highest probability first
   probs <- a2p(sol$pargs)
@@ -413,27 +444,34 @@ ml <- function(spec,pset,control) {
   opt$par <- sol
 
   # create a covariance matrix, we use the inverse of the (negative) fisher matrix, it's fast to compute
-  nm <- names(unlist(opt$par))
+  nm <- names(flatten(opt$par))
 
+  if(isTRUE(control$gradient)) {
+    opt$gradient <- gLL(flatten(opt$par),spec,skel)
+  }
   if(isTRUE(control$fisher)) {
-    opt$fisher <- fLL(unlist(opt$par),spec,skel)
+    opt$fisher <- fLL(flatten(opt$par),spec,skel)
     dimnames(opt$fisher) <- list(nm,nm)
   }
   if(isTRUE(control$hessian)) {
-    opt$hessian <- hLL(unlist(opt$par),spec,skel)
+    opt$hessian <- hLL(flatten(opt$par),spec,skel)
     dimnames(opt$hessian) <- list(nm,nm)
   }
 #  opt$vcov <- try(solve(opt$fisher), silent=TRUE)
 
   # standard errors (we should adjust for the dof, #spells or #observations? I think spells.)
-#  opt$se <- try(relist(sqrt(diag(opt$vcov)), skel=skel), silent=TRUE)
+#  opt$se <- try(unflatten(sqrt(diag(opt$vcov)), skel=skel), silent=TRUE)
 #  opt$hvcov <- solve(dhLL(opt$par,spec,skel))
-#  opt$hse <- relist(sqrt(diag(opt$hvcov)), skel=skel)
+#  opt$hse <- unflatten(sqrt(diag(opt$hvcov)), skel=skel)
   opt
 }
 
+#' @export
 a2p <- function(a) {b <- c(0,a); p <- exp(b)/sum(exp(b)); ifelse(is.na(p),1,p)}
-a2logp <- function(a) {b <- c(0,a); logp <- b - logsumofexp(b,0); ifelse(is.na(logp),0,logp)}
+##' @export
+#a2logp <- function(a) {b <- c(0,a); logp <- b - logsumofexp(b,0); ifelse(is.na(logp),0,logp)}
+
+#' @export
 p2a <- function(p) log(p/p[1])[-1]
 
 makeparset <- function(spec,npoints,oldset) {
@@ -445,11 +483,11 @@ makeparset <- function(spec,npoints,oldset) {
   })
   newset <- as.relistable(list(parset=parset, pargs=rnorm(npoints-1)))
   if(!missing(oldset)) {
-    oldset <- unlist(oldset)
-    newset <- unlist(newset)
+    oldset <- flatten(oldset)
+    newset <- flatten(newset)
     common <- intersect(names(oldset),names(newset))
     newset[common] <- oldset[common]
-    newset <- relist(newset)
+    newset <- unflatten(newset)
   }
   class(newset) <- c('mphcrm.pset',class(newset))
   newset
@@ -487,7 +525,7 @@ parseformula <- function(formula,mf) {
   spec <- lapply(2:(transitions+1), function(t) {
     rhs <- c(1,t)
     if(t > nrhs) rhs <- 1
-    ff <- as.Formula(formula(formula,rhs=rhs,lhs=0))
+    ff <- Formula::as.Formula(formula(formula,rhs=rhs,lhs=0))
     mt <- terms(ff,keep.order=TRUE)
     fact <- attr(mt,'factors')
     # now, filter out those terms which are neither factors, nor interactions with factors

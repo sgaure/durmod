@@ -7,7 +7,7 @@
 # This yields weights, i.e. how the variables corresponding
 # to the columns of B may be written as linear combinations
 # of the other variables.
-
+#' @export
 collin <- function(mat,eps=NULL,weps=0.01) {
   N <- dim(mat)[1]
   nm <- colnames(mat)
