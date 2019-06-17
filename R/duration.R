@@ -438,7 +438,7 @@ ml <- function(spec,pset,control) {
   sol$parset <- lapply(sol$parset, function(pp) {
     nm <- names(pp$mu)
     pp$mu <- pp$mu[oo]
-    names(pp$mu) <- nm[oo]
+    names(pp$mu) <- nm
     pp
   })
   opt$par <- sol

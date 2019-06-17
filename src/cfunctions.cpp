@@ -8,6 +8,17 @@
 // [[Rcpp::plugins(openmp)]]
 using namespace Rcpp;
 
+typedef struct {
+  int *val;
+  int nlevels;
+  double *x;
+} FACTOR;
+
+typedef struct {
+  double *par;
+  int nlevels;
+} FACTORPAR;
+
 double logsumofexp(const int n,const double *x, const double *y) {
   if(n < 1) stop("logsumofexp called with n < 1 (%d)",n);
   double cur = x[0]+y[0];
@@ -48,6 +59,215 @@ void a2logp(const int n, const double *a, double *logp) {
   delete [] b;
 }
 
+//      computeloglik(d[i], lh, mup, npoints, llspell)
+inline void obsloglik(const int tr, const double *lh, double dur,
+		      double **mup, const int npoints, int transitions,
+		      const int nrisks, const bool *riskmask,
+		      double *llspell) {
+  if(tr != 0) {
+    for(int j = 0; j < npoints; j++) {
+      llspell[j] += lh[tr-1] + mup[tr-1][j];
+    }
+  }
+  
+  // If there is a transition, add the loghazard
+  // divide by the survival prob up until now, i.e. subtract its log
+  for(int j = 0; j < npoints; j++) {
+    double sumhaz = 0;
+    for(int t = 0; t < transitions; t++) {
+      if(nrisks > 0 && !riskmask[t]) continue;
+      sumhaz += exp(lh[t] + mup[t][j]);
+    }
+    llspell[j] -= dur*sumhaz;
+  }
+}
+
+// compute gradient
+inline void gobsloglik(const int tr, const double *lh, double dur, int obs,
+		       double **mup, const int npoints, int transitions,
+		       int npars, int *nfacs,
+		       const int nrisks, const bool *riskmask,
+		       int *nvars,
+		       double **matp,
+		       FACTOR **factors,
+		       double *dllspell) {
+  if(tr != 0) {
+    const int t = tr-1;
+    int inipos = 0;
+    const double *mat = &matp[t][obs*nvars[t]];
+    for(int s = 0; s < t; s++) inipos += nvars[s] + nfacs[s] + npoints;
+    for(int j = 0; j < npoints; j++) {
+      double *dll = &dllspell[j*npars];
+      int pos = inipos;
+      for(int k = 0; k < nvars[t]; k++) {
+	dll[pos++] += mat[k];
+      }
+      
+      const FACTOR *fac = factors[t];
+      for(int j = 0; j < nfacs[t]; j++) {
+	const int fval = fac[j].val[obs];
+	if(fval <= 0) {pos += fac[j].nlevels; continue;};  // skip NA-levels, i.e. reference
+	double *x = fac[j].x;
+	dll[pos + fval-1] += (x != 0) ? x[obs] : 1.0;
+	pos += fac[j].nlevels;
+      }
+      
+      // and for the mus
+      dll[pos+j] += 1;
+    }
+  }
+  for(int j = 0; j < npoints; j++) {
+    double *dll = &dllspell[j*npars];
+    int pos = 0;
+    for(int t = 0; t < transitions; t++) {
+      if(nrisks > 0 && !riskmask[t]) {pos += nvars[t]+nfacs[t]+npoints;continue;}
+      const double *mat = &matp[t][obs*nvars[t]];
+      const double haz = exp(lh[t] + mup[t][j]);
+      for(int k = 0; k < nvars[t]; k++) {
+	dll[pos++] -= dur*haz*mat[k];
+      }
+      const FACTOR *fac = factors[t];
+      for(int k = 0; k < nfacs[t]; k++) {
+	const int fval = fac[k].val[obs];
+	if(fval <= 0) {pos += fac[k].nlevels; continue;}
+	const double f = (fac[k].x != 0) ? fac[k].x[obs] : 1.0;
+	dll[pos + fval-1] -= dur*haz*f;
+	pos += fac[k].nlevels;
+      }
+      dll[pos+j] -= dur*haz;
+      pos += npoints;
+    }
+  }
+}
+
+inline void updategradient(int npoints, double *dllspell, double *llspell, double *logprobs, double ll,
+		     int transitions, int npars, int *nvars, int *faclevels, const double *pargs, 
+		     int totalpars, double *spellgrad, double *grad) {
+  (void) memset(spellgrad, 0, totalpars*sizeof(double));
+
+
+  // compute gradient
+  // we have the gradient of each llspell component in dllspell
+  // Now, ll = log(sum(p_j exp(lh_j)))
+  // where j ranges over 1..masspoints
+  // We have lh_j in llspell
+  // we have d lh_j / dx in dllspell
+  // we have d ll / dx = 1/sum(p_j exp(lh_j)) * d sum(p_j exp(lh_j)) / dx.
+  //
+  // For x not a probability parameter, i.e. only occuring in lh_j
+  // we have d sum(p_j exp(lh_j)) / dx = sum(p_j exp(lh_j) dlh_j/dx).
+  // 
+  // For the probability parameters y (which do not occur in each of the lh_j) we have
+  // d sum(p_j exp(lh_j)) / dy = sum(dp_j/dy exp(lh_j))
+  
+  // then compute d sum(p_j exp(lh_j)) / dx.
+  // First for the ordinary covariates where it equals sum(p_j exp(lh_j) dlh_j/dx)
+
+  for(int j = 0; j < npoints; j++) {
+    const double *dll = &dllspell[j*npars];
+    const double logprob = logprobs[j];
+    const double scale = exp(logprob + llspell[j] - ll);
+    
+    int pos = 0;
+    for(int t = 0; t < transitions; t++) {
+      for(int k = 0; k < nvars[t]+faclevels[t]; k++) {
+	spellgrad[pos] += scale * dll[pos];
+	pos++;
+      }
+      // the mu for this masspoint in this transition
+      spellgrad[pos+j] += scale*dll[pos+j];
+      pos += npoints; // next transition
+    }
+    
+    // The probability-parameters ak occur in all the probabilities
+    // compute dPj / dak
+    // The a's are in pargs
+    // let sp = 1+sum(exp(pargs)), can be moved out
+    double sp=1;
+    for(int k = 0; k < npoints-1; k++) sp += exp(pargs[k]);
+    const double lscale = llspell[j] - ll;
+    for(int k = 0; k < npoints-1; k++) {
+      const double ak = pargs[k];
+      double dPdak;
+      if(j == 0) {
+	// for j=0, special case, it's -exp(ak)/sp^2
+	dPdak = -exp(ak+lscale)/(sp*sp);
+      } else if(j == k+1) {
+	dPdak = exp(ak+lscale) * (sp-exp(ak)) / (sp*sp);
+      } else {
+	dPdak = -exp(logprobs[k+1] + logprobs[j] + lscale);
+      }
+      spellgrad[npars+k] += dPdak; 
+    }
+  }
+  // update global gradient with spell gradient
+  for(int k = 0; k < totalpars; k++) grad[k] += spellgrad[k];
+
+}
+
+inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *gradblock, 
+			  int *nonzero, double *spellgrad, double *fisher) {
+  // When computing the fisher matrix, we have individual spell
+  // gradients in the gradblock matrix, we should add this
+  // spell's gradient as a column.  When the gradblock matrix is
+  // full, we dsyrk it into the fisher matrix. We do this in a
+  // critical region, since all the threads use the same
+  // gradblock and fisher matrix. This has the additional
+  // bonus that only one thread runs the dsyrk at any time, so
+  // we can use a parallel blas. The reason we collect gradients
+  // in gradblock is that dsyrk is a lot faster than dsyr (rank
+  // 1 update).
+
+
+  if(*gradfill == fishblock) {
+    // dsyrk the gradblock into fisher
+    //       subroutine dsyrk (UPLO, TRANS, N, K, ALPHA, A, LDA, BETA, C, LDC)
+    // C = alpha A * A' + beta C
+    
+    // how many rows are nonzero?
+    int nnrank = 0;
+    for(int j = 0; j < totalpars; j++) {
+      bool nonz = false;
+      for(int k = 0; k < fishblock && !nonz; k++) {
+	nonz |= (gradblock[k*totalpars + j] != 0.0);
+      }
+      if(nonz) nonzero[nnrank++] = j;
+    }
+    if(4*nnrank < 3*totalpars) {
+      // Less than some limit, we dsyrk a smaller one
+      
+      double *smallblock = new double[fishblock*nnrank];
+      for(int b = 0; b < fishblock; b++) {
+	for(int k = 0; k < nnrank; k++) {
+	  smallblock[b*nnrank + k] = gradblock[b*totalpars + nonzero[k]];
+	}
+      }
+      // dsyrk it into smallfish
+      const double alpha=-1, beta=0;
+      
+      double *smallfish = new double[nnrank*nnrank];
+      F77_CALL(dsyrk)("U","N",&nnrank,&fishblock,&alpha,smallblock,&nnrank,&beta,
+		      smallfish, &nnrank);
+      delete [] smallblock;
+      // update fisher from smallfish
+      for(int j = 0; j < nnrank; j++) {
+	for(int k = 0; k <= j; k++) {
+	  fisher[nonzero[j]*totalpars + nonzero[k]] += smallfish[j*nnrank + k];
+	}
+      }
+      delete [] smallfish;
+    } else {
+      const double alpha = -1, beta = 1;
+      F77_CALL(dsyrk)("U","N", &totalpars, &fishblock, &alpha, gradblock, 
+		      &totalpars, &beta, fisher, &totalpars);
+    }
+    *gradfill = 0;
+  }
+  // append the spell gradient to the block
+  for(int k = 0; k < totalpars; k++) gradblock[*gradfill * totalpars + k] = spellgrad[k];
+  (*gradfill)++;
+}
+
 // [[Rcpp::export]]
 NumericVector cloglik(List spec, List pset, 
 		      const bool gdiff=false, const bool dogradient=false, const bool dofisher=false,
@@ -83,15 +303,10 @@ NumericVector cloglik(List spec, List pset,
   double **matp = new double*[transitions];
 
   int *nvars = new int[transitions];
-  typedef struct {
-    int *val;
-    int nlevels;
-    double *x;
-  } FACTOR;
 
   // number of factors in each transition
 
-  R_xlen_t *nfacs = new R_xlen_t[transitions];
+  int *nfacs = new int[transitions];
   // pointers to factor lists
   FACTOR **factors = new FACTOR*[transitions];
   for(int i = 0; i < transitions; i++) {
@@ -120,10 +335,6 @@ NumericVector cloglik(List spec, List pset,
   }
 
   // pointers into the parameters
-  typedef struct {
-    double *par;
-    int nlevels;
-  } FACTORPAR;
 
   double **betap = new double*[transitions];
   double **mup = new double*[transitions];
@@ -198,7 +409,6 @@ NumericVector cloglik(List spec, List pset,
 
 #pragma omp parallel for reduction(+:grad[:gradsize], LL) num_threads(nthreads) schedule(guided)
   for(int spellno = 0; spellno < nspells; spellno++) {
-    //    double lh[transitions];   
     memset(llspell, 0, npoints*sizeof(double));
     if(dograd) memset(dllspell, 0, npoints*npars*sizeof(double));
     for(int i = spellidx[spellno]; i < spellidx[spellno+1]; i++) {
@@ -206,6 +416,7 @@ NumericVector cloglik(List spec, List pset,
       // compute the log hazard for this observation for each masspoint and transition
       // loop through the mass points. For each find the hazard sum
     
+      // fill in the loghazards in the lh-array
       const bool *riskmask = nrisks>0 ? &riskmasks[(state[i]-1)*transitions] : 0;
       for(int t = 0; t < transitions; t++) {
 	lh[t] = 0.0;
@@ -225,73 +436,13 @@ NumericVector cloglik(List spec, List pset,
 	}
       }
       
-      if(d[i] != 0) {
-	for(int j = 0; j < npoints; j++) {
-	  llspell[j] += lh[d[i]-1] + mup[d[i]-1][j];
-	}
-      }
-      
-      // If there is a transition, add the loghazard
-      // divide by the survival prob up until now, i.e. subtract its log
-      for(int j = 0; j < npoints; j++) {
-	double sumhaz = 0;
-	for(int t = 0; t < transitions; t++) {
-	  if(nrisks > 0 && !riskmask[t]) continue;
-	  sumhaz += exp(lh[t] + mup[t][j]);
-	}
-	llspell[j] -= duration[i]*sumhaz;
-      }
-      
-      if(dograd) {
-	// compute gradient
-	if(d[i] != 0) {
-	  int t = d[i]-1;
-	  int inipos = 0;
-	  for(int s = 0; s < t; s++) inipos += nvars[s] + nfacs[s] + npoints;
-	  for(int j = 0; j < npoints; j++) {
-	    double *dll = &dllspell[j*npars];
-	    const double *mat = &matp[t][i*nvars[t]];
-	    int pos = inipos;
-	    for(int k = 0; k < nvars[t]; k++) {
-	      dll[pos++] += mat[k];
-	    }
 
-	    const FACTOR *fac = factors[t];
-	    for(int j = 0; j < nfacs[t]; j++) {
-	      const int fval = fac[j].val[i];
-	      if(fval <= 0) {pos += fac[j].nlevels; continue;};  // skip NA-levels, i.e. reference
-	      double *x = fac[j].x;
-	      dll[pos + fval-1] += (x != 0) ? x[i] : 1.0;
-	      pos += fac[j].nlevels;
-	    }
-
-	    // and for the mus
-	    dll[pos+j] += 1;
-	  }
-	}
-	for(int j = 0; j < npoints; j++) {
-	  double *dll = &dllspell[j*npars];
-	  int pos = 0;
-	  for(int t = 0; t < transitions; t++) {
-	    if(nrisks > 0 && !riskmask[t]) {pos += nvars[t]+nfacs[t]+npoints;continue;}
-	    const double *mat = &matp[t][i*nvars[t]];
-	    const double haz = exp(lh[t] + mup[t][j]);
-	    for(int k = 0; k < nvars[t]; k++) {
-	      dll[pos++] -= duration[i]*haz*mat[k];
-	    }
-	    const FACTOR *fac = factors[t];
-	    for(int k = 0; k < nfacs[t]; k++) {
-	      const int fval = fac[k].val[i];
-	      if(fval <= 0) {pos += fac[k].nlevels; continue;}
-	      const double f = (fac[k].x != 0) ? fac[k].x[i] : 1.0;
-	      dll[pos + fval-1] -= duration[i]*haz*f;
-	      pos += fac[k].nlevels;
-	    }
-	    dll[pos+j] -= duration[i]*haz;
-	    pos += npoints;
-	  }
-	}
-      }
+      // update llspell with the observation log likelihood 
+      obsloglik(d[i], lh, duration[i], mup, npoints, transitions, nrisks, riskmask, llspell);
+      // update dllspell with the gradient of the observartion log likelihood
+      if(dograd) gobsloglik(d[i], lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
+			    nrisks, riskmask, nvars, matp,
+			    factors, dllspell);
     }
     
     // We have collected the loglikelihood of a spell, one for each masspoint
@@ -301,129 +452,19 @@ NumericVector cloglik(List spec, List pset,
       ll = logsumofexp(npoints-1,llspell,logprobs);
       LL += expm1(llspell[npoints-1] - ll);
     } else {
+      // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
       LL += ll;
       
       if(dograd) {
-	// compute gradient
-	// we have the gradient of each llspell component in dllspell
-	// Now, ll = log(sum(p_j exp(lh_j)))
-	// where j ranges over 1..masspoints
-	// We have lh_j in llspell
-	// we have d lh_j / dx in dllspell
-	// we have d ll / dx = 1/sum(p_j exp(lh_j)) * d sum(p_j exp(lh_j)) / dx.
-	//
-	// For x not a probability parameter, i.e. only occuring in lh_j
-	// we have d sum(p_j exp(lh_j)) / dx = sum(p_j exp(lh_j) dlh_j/dx).
-	// 
-	// For the probability parameters y (which do not occur in each of the lh_j) we have
-	// d sum(p_j exp(lh_j)) / dy = sum(dp_j/dy exp(lh_j))
-	
-	// then compute d sum(p_j exp(lh_j)) / dx.
-	// First for the ordinary covariates where it equals sum(p_j exp(lh_j) dlh_j/dx)
-	
-	(void) memset(spellgrad, 0, totalpars*sizeof(double));
-
-	for(int j = 0; j < npoints; j++) {
-	  const double *dll = &dllspell[j*npars];
-	  const double logprob = logprobs[j];
-	  const double scale = exp(logprob + llspell[j] - ll);
-	  
-	  int pos = 0;
-	  for(int t = 0; t < transitions; t++) {
-	    for(int k = 0; k < nvars[t]+faclevels[t]; k++) {
-	      spellgrad[pos] += scale * dll[pos];
-	      pos++;
-	    }
-	    // the mu for this masspoint in this transition
-	    spellgrad[pos+j] += scale*dll[pos+j];
-	    pos += npoints; // next transition
-	  }
-	  
-	  // The probability-parameters ak occur in all the probabilities
-	  // compute dPj / dak
-	  // The a's are in pargs
-	  // let sp = 1+sum(exp(pargs)), can be moved out
-	  double sp=1;
-	  for(int k = 0; k < npoints-1; k++) sp += exp(pargs[k]);
-	  const double lscale = llspell[j] - ll;
-	  for(int k = 0; k < npoints-1; k++) {
-	    const double ak = pargs[k];
-	    double dPdak;
-	    if(j == 0) {
-	      // for j=0, special case, it's -exp(ak)/sp^2
-	      dPdak = -exp(ak+lscale)/(sp*sp);
-	    } else if(j == k+1) {
-	      dPdak = exp(ak+lscale) * (sp-exp(ak)) / (sp*sp);
-	    } else {
-	      dPdak = -exp(logprobs[k+1] + logprobs[j] + lscale);
-	    }
-	    spellgrad[npars+k] += dPdak; 
-	  }
-	}
-	// update global gradient with spell gradient
-	for(int k = 0; k < totalpars; k++) grad[k] += spellgrad[k];
-
-	// If computing the fisher matrix, we have individual spell
-	// gradients in the gradblock matrix, we should add this
-	// spell's gradient as a column.  When the gradblock matrix is
-	// full, we dsyrk it into the fisher matrix. We do this in a
-	// critical region, since all the threads use the same
-	// gradblock and fisher matrix. This has the additional
-	// bonus that only one thread runs the dsyrk at any time, so
-	// we can use a parallel blas. The reason we collect gradients
-	// in gradblock is that dsyrk is a lot faster than dsyr (rank
-	// 1 update).
-#pragma omp critical
+	// compute the spell gradient, update the gradient
+	updategradient(npoints, dllspell, llspell, logprobs, ll,
+		 transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad, grad);
 	if(dofisher) {
-	  if(gradfill == fishblock) {
-	    // dsyrk the gradblock into fisher
-	    //       subroutine dsyrk (UPLO, TRANS, N, K, ALPHA, A, LDA, BETA, C, LDC)
-	    // C = alpha A * A' + beta C
-
-	    // how many rows are nonzero?
-	    int nnrank = 0;
-	    for(int j = 0; j < totalpars; j++) {
-	      bool nonz = false;
-	      for(int k = 0; k < fishblock && !nonz; k++) {
-		nonz |= (gradblock[k*gradsize + j] != 0.0);
-	      }
-	      if(nonz) nonzero[nnrank++] = j;
-	    }
-	    if(4*nnrank < 3*totalpars) {
-	      // Less than some limit, we dsyrk a smaller one
-
-	      double *smallblock = new double[fishblock*nnrank];
-	      for(int b = 0; b < fishblock; b++) {
-		for(int k = 0; k < nnrank; k++) {
-		  smallblock[b*nnrank + k] = gradblock[b*gradsize + nonzero[k]];
-		}
-	      }
-	      // dsyrk it into smallfish
-	      const double alpha=-1, beta=0;
-
-	      double *smallfish = new double[nnrank*nnrank];
-	      F77_CALL(dsyrk)("U","N",&nnrank,&fishblock,&alpha,smallblock,&nnrank,&beta,
-			      smallfish, &nnrank);
-	      delete [] smallblock;
-	      // update fisher from smallfish
-	      for(int j = 0; j < nnrank; j++) {
-		for(int k = 0; k <= j; k++) {
-		  fisher[nonzero[j]*gradsize + nonzero[k]] += smallfish[j*nnrank + k];
-		}
-	      }
-	      //	      delete [] nonzero;
-	      delete [] smallfish;
-	    } else {
-	      const double alpha = -1, beta = 1;
-	      F77_CALL(dsyrk)("U","N", &totalpars, &fishblock, &alpha, gradblock, 
-			      &totalpars, &beta, fisher, &totalpars);
-	    }
-	    gradfill = 0;
-	  }
-	  // append the spell gradient to the block
-	  for(int k = 0; k < totalpars; k++) gradblock[gradfill*gradsize + k] = spellgrad[k];
-	  gradfill++;
+	  // update the fisher matrix from the spellgrad
+	  // we use a global fisher matrix, no omp reduction, so do it in a critical section
+#pragma omp critical
+	  updatefisher(&gradfill, fishblock, totalpars, gradblock, nonzero, spellgrad, fisher);
 	}
       }
     } 
@@ -432,7 +473,6 @@ NumericVector cloglik(List spec, List pset,
   // Deallocate thread private storage
 #pragma omp parallel num_threads(nthreads)
   {  
-  //  double llspell[npoints];
     delete [] llspell;
     delete [] lh;
     if(dograd) {
@@ -450,6 +490,8 @@ NumericVector cloglik(List spec, List pset,
     F77_CALL(dsyrk)("U","N", &N, &K, &alpha, gradblock, &N, &beta, fisher, &N);
  
   }
+
+  // deallocate other storage
   if(dofisher) delete [] gradblock;
 
   delete [] logprobs;
@@ -467,7 +509,6 @@ NumericVector cloglik(List spec, List pset,
   delete [] facpars;
   delete [] faclevels;
 
-
   // Then set up the return value
   NumericVector ret = NumericVector::create(LL);
   if(dograd) {
@@ -476,19 +517,7 @@ NumericVector cloglik(List spec, List pset,
     ret.attr("gradient") = retgrad;
     delete [] grad;
   }
-  if(dofisher) {
-    /*
-    NumericMatrix retfish(totalpars,totalpars);
-    // copy and fill in the lower diagonal.
-    for(int k = 0; k < totalpars; k++) {
-      for(int j = 0; j < totalpars; j++) {
-	retfish(j,k) = (j <= k) ? fisher[k*gradsize + j] : fisher[j*gradsize + k];
-      }
-    }
-    */
-    ret.attr("fisher") = *retfisher;
-    //    delete [] fisher;
-  } 
-  //  printf("ret from loglik\n");
+  if(dofisher)  ret.attr("fisher") = *retfisher;
+
   return ret;
 }
