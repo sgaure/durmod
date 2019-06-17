@@ -4,8 +4,9 @@
 \alias{mphcrm}
 \title{Estimate a mixed proportional hazard model}
 \usage{
-mphcrm(formula, data, id, durvar, state, risksets = NULL, subset,
-  na.action, control = mphcrm.control())
+mphcrm(formula, data, id, durvar, state, risksets = NULL,
+  timing = c("exact", "interval", "logit"), subset, na.action,
+  control = mphcrm.control())
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.

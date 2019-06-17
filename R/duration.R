@@ -74,7 +74,9 @@
 #' [TBS]
 #' @export
 mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
+                   timing=c('exact','interval','logit'),
                    subset, na.action, control=mphcrm.control()) {
+  timing <- match.arg(timing)
   F <- Formula::as.Formula(formula)
   if(missing(id)) stop('id must be specified')
   environment(F) <- environment(formula)
@@ -105,7 +107,7 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 
   spec <- parseformula(F,mf)
 
-  colnames(mf)
+  attr(spec,'timing') <- timing
   id <- factor(eval(as.name(deparse(id.v)),mf,environment(F)))
 
   if(length(id) != N) stop('id must have length ',N,' (',as.character(id),')')
@@ -186,7 +188,7 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               gdiff=TRUE, callback=callback_default)
+               gdiff=TRUE, minprob=1e-6, eqtol=1e-3, callback=callback_default)
   args <- list(...)
   nm <- names(ctrl)[names(ctrl) %in% names(args)]
   ctrl[nm] <- args[nm]
@@ -197,9 +199,10 @@ mphcrm.control <- function(...) {
 #' @export
 callback_default <- function(fromwhere,opt,spec) {
   
-  if(opt$convergence != 0) {
+  if(is.logical(opt$convergence) && opt$convergence != 0) {
     message(date(), ' ', fromwhere, ' optimization failed to converge: ',opt$message,'(',opt$convergence,')')
   }
+#  if(!identical(fromwhere, 'full')) return()
   if(!identical(fromwhere, 'full')) {message(date(), ' optimized ',fromwhere);return(TRUE)}
   if(!is.null(opt$fisher)) {
     rc <- rcond(opt$fisher)
@@ -247,7 +250,7 @@ pointiter <- function(spec,pset,control) {
     },
     error=function(...) {
       intr <<- TRUE; iopt <<- opt; 
-      warning('error occured, returning most recent estimate: ',conditionMessage(...))
+      warning('error occured, returning most recent estimate: ',...)
     },
     interrupt=function(...) {
       intr <<- TRUE
@@ -319,6 +322,8 @@ newpoint <- function(spec,pset,value,control) {
   muopt <- nloptr::nloptr(args, fun, lb=rep(-10,ntrans), ub=rep(1,ntrans),
                           opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else value-1,
                                     maxtime=120,maxeval=10000,population=10*length(args)))
+  muopt$convergence <- muopt$status
+  control$callback('newpoint',muopt,spec)
   if(!(muopt$status %in% c(0,2))) 
     message(muopt$status, ' ', muopt$message,' (',muopt$objective,') iter ',muopt$iterations)
   
@@ -337,17 +342,17 @@ badpoints <- function(pset,control) {
   # are any masspoints equal?
   np <- length(pset$pargs)+1
   p <- a2p(pset$pargs)
-  okpt <- p > 1e-6
+  okpt <- p > control$minprob
   for(i in seq_len(np)) {
     mui <- sapply(pset$parset, function(pp) pp$mu[i])
     for(j in seq_len(i-1)) {
       if(!okpt[j]) next
       muj <- sapply(pset$parset, function(pp) pp$mu[j])
-      if(max(abs(exp(muj) - exp(mui))) < 0.001) {
+      if(max(abs(exp(muj) - exp(mui))) < control$eqtol) {
         message(sprintf('points %d and %d are equal',j,i))
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
-        colnames(mumat) <- paste('t',names(pset$parset),sep='.')
+        colnames(mumat) <- names(pset$parset)
         print(cbind(prob=c(p[j],p[i]),mumat))
         okpt[i] <- FALSE
       }
@@ -422,8 +427,8 @@ ml <- function(spec,pset,control) {
 #  print(system.time(fish <- fLL(args,spec,skel)))
 #  message('fish eigs:');print(eigen(fish,only.values=TRUE)$values)
 #  message('Fisher matrix:'); print(system.time(print(fLL(args,spec,skel))))
-#  message('gLL: '); print(system.time(print(gLL(args,spec,skel))))
-#  message('dLL: '); print(system.time(print(dLL(args,spec,skel))))
+  message('gLL: '); print(system.time(print(gLL(args,spec,skel))))
+  message('dLL: '); print(system.time(print(dLL(args,spec,skel))))
 #  stop('debug')
 #  dLL <- function(args,spec,skel) numDeriv::grad(LL,args,method='simple',spec=spec,skel=skel)
   opt <- optim(args,LL,gLL,method='BFGS',
