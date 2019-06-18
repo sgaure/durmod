@@ -5,6 +5,16 @@
 
 using namespace Rcpp;
 
+// cdebug
+void cdebug(bool dodebug);
+RcppExport SEXP _durmod_cdebug(SEXP dodebugSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< bool >::type dodebug(dodebugSEXP);
+    cdebug(dodebug);
+    return R_NilValue;
+END_RCPP
+}
 // cloglik
 NumericVector cloglik(List spec, List pset, const bool gdiff, const bool dogradient, const bool dofisher, const int nthreads);
 RcppExport SEXP _durmod_cloglik(SEXP specSEXP, SEXP psetSEXP, SEXP gdiffSEXP, SEXP dogradientSEXP, SEXP dofisherSEXP, SEXP nthreadsSEXP) {
@@ -23,6 +33,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_durmod_cdebug", (DL_FUNC) &_durmod_cdebug, 1},
     {"_durmod_cloglik", (DL_FUNC) &_durmod_cloglik, 6},
     {NULL, NULL, 0}
 };

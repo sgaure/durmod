@@ -188,7 +188,8 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               gdiff=FALSE, minprob=1e-6, eqtol=1e-3, newprob=1e-4, jobname='', callback=callback_default,
+               method='BFGS', gdiff=FALSE, minprob=1e-6, eqtol=1e-3, newprob=1e-4, jobname='', 
+               callback=callback_default,
                ifile=NULL)
   args <- list(...)
   bad <- !(names(args) %in% names(ctrl))
@@ -264,7 +265,7 @@ pointiter <- function(spec,pset,control) {
       intr <<- TRUE
       iopt <<- structure(opt,interrupted=TRUE)
       control$callback('interrupt', opt, spec, control)
-      warning("estimation interrupted, returning most recent estimate",...)
+      warning("estimation interrupted, returning most recent estimate ",...)
     },
     finally=if(intr) opt <- iopt)
   opt
@@ -440,7 +441,7 @@ ml <- function(spec,pset,control) {
 #  message('dLL: '); print(system.time(print(dLL(args,spec,skel))))
 #  stop('debug')
 #  dLL <- function(args,spec,skel) numDeriv::grad(LL,args,method='simple',spec=spec,skel=skel)
-  opt <- optim(args,LL,gLL,method='BFGS',
+  opt <- optim(args,LL,gLL,method=control$method,
                control=list(trace=0,REPORT=10,maxit=10*length(args),lmm=60,abstol=1e-4,reltol=1e-14),
                spec=spec,skel=skel)
   sol <- unflatten(opt$par)

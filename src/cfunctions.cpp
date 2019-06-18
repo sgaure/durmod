@@ -23,7 +23,13 @@ typedef struct {
 } FACTORPAR;
 
 
-// return log(1 + sum(exp(x+y)))
+static bool debug = false;
+// [[Rcpp::export]]
+void cdebug(bool dodebug) {
+  debug=dodebug;
+}
+
+// return log(sum(exp(x+y)))
 inline double logsumofexp(const int n,const double *x, const double *y) {
   if(n < 1) stop("logsumofexp called with n < 1 (%d)",n);
   double cur = x[0]+y[0];
@@ -31,12 +37,21 @@ inline double logsumofexp(const int n,const double *x, const double *y) {
   return cur;
 }
 
+// log(1+sum(x))
+inline double log1sumx(int n, const double *x) {
+  double lsum = 0;
+  for(int i = 0; i < n; i++) lsum = R::logspace_add(lsum,x[i]);
+  return lsum;
+}
+
+
+
+// convert parametrized probabilities Pi = exp(ai)/(1+sum(exp(ai))) to log probabilities
 // a2logp <- function(a) {b <- c(0,a); logp <- b - logsumofexp(b,0); ifelse(is.na(logp),0,logp)}
 void a2logp(const int n, const double *a, double *logp) {
   if(n < 0) stop("a2logp called with negative n (%d)",n);
-
-  double lsum = 0;
-  for(int i = 0; i < n; i++) lsum = R::logspace_add(lsum,a[i]);
+  
+  double lsum = log1sumx(n, a);
   logp[0] = -lsum;
   for(int i = 0; i < n; i++) logp[i+1] = a[i]-lsum;
   return;
@@ -75,12 +90,11 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
   // If there is a transition, add the loghazard
   // divide by the survival prob up until now, i.e. subtract its log
   for(int j = 0; j < npoints; j++) {
-    double logsumhaz = 0;
+    double logsumhaz = -DBL_MAX;
     for(int t = 0; t < transitions; t++) {
       if(riskmask && !riskmask[t]) continue;
       logsumhaz = R::logspace_add(logsumhaz, lh[t]+mup[t][j]);
     }
-
     switch(timing) {
     case exact:
     case interval:
@@ -119,7 +133,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 
   for(int j = 0; j < npoints; j++) {
     double sumhaz = 0;
-    double logsumhaz = 0;
+    double logsumhaz = -DBL_MAX;
     if(timing == logit || (timing == interval && t >= 0)) {
       for(int tt = 0; tt < transitions; tt++) {
 	if(riskmask && !riskmask[tt]) continue;
@@ -258,8 +272,7 @@ inline void updategradient(int npoints, double *dllspell, double *llspell, doubl
 
   for(int j = 0; j < npoints; j++) {
     const double *dll = &dllspell[j*npars];
-    const double logprob = logprobs[j];
-    const double scale = exp(logprob + llspell[j] - ll);
+    const double scale = exp(logprobs[j] + llspell[j] - ll);
     
     int pos = 0;
     for(int t = 0; t < transitions; t++) {
@@ -275,21 +288,25 @@ inline void updategradient(int npoints, double *dllspell, double *llspell, doubl
     // The probability-parameters ak occur in all the probabilities
     // compute dPj / dak
     // The a's are in pargs
-    // let sp = 1+sum(exp(pargs)), can be moved out
-    double sp=1;
-    for(int k = 0; k < npoints-1; k++) sp += exp(pargs[k]);
+    // let ld = log(1+sum(exp(pargs))), can be moved out
+    // Stick to logs, 
+    double ld = log1sumx(npoints-1, pargs);
     const double lscale = llspell[j] - ll;
     for(int k = 0; k < npoints-1; k++) {
       const double ak = pargs[k];
       double dPdak;
+
       if(j == 0) {
-	// for j=0, special case, it's -exp(ak)/sp^2
-	dPdak = -exp(ak+lscale)/(sp*sp);
+	// for j=0, special case, it's dP0/dak
+	dPdak = -exp(ak-2*ld + lscale);
       } else if(j == k+1) {
-	dPdak = exp(ak+lscale) * (sp-exp(ak)) / (sp*sp);
+	// dPk/dak
+	dPdak = exp(ak-ld + lscale) - exp(2*(ak-ld) + lscale);
       } else {
+	// dPj/dak
 	dPdak = -exp(logprobs[k+1] + logprobs[j] + lscale);
       }
+
       spellgrad[npars+k] += dPdak; 
     }
   }
@@ -511,12 +528,11 @@ NumericVector cloglik(List spec, List pset,
       
       // compute the log hazard for this observation for each masspoint and transition
       // loop through the mass points. For each find the hazard sum
-    
       // fill in the loghazards in the lh-array
       const bool *riskmask = nrisks>0 ? &riskmasks[(state[i]-1)*transitions] : 0;
       for(int t = 0; t < transitions; t++) {
 	lh[t] = 0.0;
-	//	if(riskmask && !riskmask[t]) continue;
+	if(riskmask && !riskmask[t]) continue;  // should this be here?
 	const double *mat = &matp[t][i*nvars[t]];
 	const double *beta = betap[t];
 	for(int k = 0; k < nvars[t]; k++) {
