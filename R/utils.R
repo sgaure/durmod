@@ -32,13 +32,36 @@ cholx <- function(mat, eps=1e-6) {
   return(structure(ch,badvars=badvars))
 }
 
-
-
 # cbind(val=flatten(dd$par), sd=sqrt(diag(safeinv(dd$fisher))))
 
+# create a matrix(t1mus, t2mus,... probs)
+pdist <- function(pset) {
+  mus <- as.matrix(sapply(pset$parset, function(pp) pp$mu))
+  rownames(mus) <- paste0('point ',seq_len(nrow(mus)))
+  prob <- a2p(pset$parg)
+  cbind(prob,mus)
+}
 
+pmoments <- function(pset) {
+  dist <- pdist(pset)
+  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
+  variance <- rowSums(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2))
+  sd <- sqrt(variance)
+  cbind(mean,variance,sd)
+}
+pmoments.exp <- function(pset) {
+  dist <- pdist(pset)
+  mean <- rowSums(apply(dist, 1, function(x) x[1]*exp(x[-1])))
+  variance <- rowSums(apply(dist, 1, function(x) x[1]*(exp(x[-1])-mean)^2))
+  sd <- sqrt(variance)
+  cbind(mean,variance,sd)
+}
 
-
+se <- function(x) {
+  if(is.matrix(x)) return(sqrt(diag(safeinv(x))))
+  if(!is.null(x$fisher)) return(sqrt(diag(safeinv(x$fisher))))
+  stop("Can't find a matrix to invert")
+}
 
 
 
