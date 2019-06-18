@@ -188,8 +188,11 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               gdiff=TRUE, minprob=1e-6, eqtol=1e-3, callback=callback_default)
+               gdiff=FALSE, minprob=1e-6, eqtol=1e-3, newprob=1e-4, jobname='', callback=callback_default,
+               ifile=NULL)
   args <- list(...)
+  bad <- !(names(args) %in% names(ctrl))
+  if(any(bad)) {warning("unknown control parameter(s): ", paste(names(args)[bad], collapse=' '))}
   nm <- names(ctrl)[names(ctrl) %in% names(args)]
   ctrl[nm] <- args[nm]
   ctrl
@@ -197,13 +200,18 @@ mphcrm.control <- function(...) {
 
 #' Default callback function for mphcrm
 #' @export
-callback_default <- function(fromwhere,opt,spec) {
+callback_default <- function(fromwhere, opt, spec, control, ...) {
   
-  if(is.logical(opt$convergence) && opt$convergence != 0) {
-    message(date(), ' ', fromwhere, ' optimization failed to converge: ',opt$message,'(',opt$convergence,')')
+  if(fromwhere=='interrupt' && length(control$ifile)) {
+    message(control$jobname, ' ', date(), ' job interrupted, saving to ',control$ifile)
+    save(opt,spec,control, file=control$ifile)
   }
-#  if(!identical(fromwhere, 'full')) return()
-  if(!identical(fromwhere, 'full')) {message(date(), ' optimized ',fromwhere);return(TRUE)}
+  jobname <- control$jobname
+  if(is.logical(opt$convergence) && opt$convergence != 0) {
+    message(jobname, ' ', date(), ' ', fromwhere, ' optimization failed to converge: ',opt$message,'(',opt$convergence,')')
+  }
+  if(!identical(fromwhere, 'full')) return()
+#  if(!identical(fromwhere, 'full')) {message(jobname,' ',date(), ' optimized ',fromwhere);return(TRUE)}
   if(!is.null(opt$fisher)) {
     rc <- rcond(opt$fisher)
   } else {
@@ -215,9 +223,9 @@ callback_default <- function(fromwhere,opt,spec) {
     grd <- NA
   }
   probs <- a2p(opt$par$pargs)
-  message(date(), sprintf(' loglik %.4f grad %.3g minprob %.4g rcond %.2g (%d points)',
+  message(jobname,' ',date(), sprintf(' loglik %.4f grad %.3g minprob %.4g rcond %.2g (%d points)',
                           -opt$value, grd, min(probs), rc, length(opt$par$pargs)+1))
-  if(rc < 1e-12) {message(sprintf('  ***bad condition: %.2e',rc)); return(FALSE)}
+  if(rc < sqrt(.Machine$double.eps)) {message(sprintf('%s  ***bad condition: %.2e',jobname,rc)); return(FALSE)}
   return(TRUE)
 }
 
@@ -239,23 +247,24 @@ pointiter <- function(spec,pset,control) {
     pset$parset[[i]]$mu[] <- opt0$par[i]
   }
   opt0$par <- pset
-  control$callback('nullmodel',opt0,spec)
+  control$callback('nullmodel',opt0,spec,control)
   intr <- FALSE
   iopt <- opt <- opt0 
   tryCatch(
     for(i in seq_len(control$iters)) {
       opt <- ml(spec,pset,control)
-      control$callback('full',opt, spec)
+      control$callback('full',opt, spec,control)
       pset <- addpoint(spec,opt$par,opt$value,control)
     },
     error=function(...) {
-      intr <<- TRUE; iopt <<- opt; 
+      intr <<- TRUE; iopt <<- structure(opt,error=...); 
       warning('error occured, returning most recent estimate: ',...)
     },
     interrupt=function(...) {
       intr <<- TRUE
-      iopt <<- opt
-      warning("estimation interrupted, returning most recent estimate")
+      iopt <<- structure(opt,interrupted=TRUE)
+      control$callback('interrupt', opt, spec, control)
+      warning("estimation interrupted, returning most recent estimate",...)
     },
     finally=if(intr) opt <- iopt)
   opt
@@ -270,7 +279,7 @@ optprobs <- function(spec,pset,control) {
   aopt <- optim(pset$pargs,pfun,method='BFGS',control=list(trace=0,REPORT=1,factr=10))
 #  message('probs:',sprintf(' %.7f',a2p(aopt$par)), ' value: ',aopt$value)
   pset$pargs[] <- aopt$par
-  control$callback('prob',aopt,spec)
+  control$callback('prob',aopt,spec,control)
   pset
 }
 
@@ -297,14 +306,14 @@ optdist <- function(spec,pset,control) {
     pos <- pos+n+1
   }
   dopt$par <- pset
-  control$callback('dist',dopt,spec)
+  control$callback('dist',dopt,spec,control)
   pset
 }
 
 newpoint <- function(spec,pset,value,control) {
   gdiff <- control$gdiff
   pr <- a2p(pset$pargs)
-  newprob <- if(gdiff) 0 else min(0.1*pr,1e-4)
+  newprob <- if(gdiff) 0 else control$newprob
   newpr <- c( (1 - newprob)*pr, newprob)
 #  newpr <- newpr/sum(newpr)
   #  newpr <- c(pr,0)
@@ -320,12 +329,12 @@ newpoint <- function(spec,pset,value,control) {
   }
   args <- runif(length(newset$parset),-10,1)
   muopt <- nloptr::nloptr(args, fun, lb=rep(-10,ntrans), ub=rep(1,ntrans),
-                          opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else value-1,
+                          opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else value-1e-2,
                                     maxtime=120,maxeval=10000,population=10*length(args)))
   muopt$convergence <- muopt$status
-  control$callback('newpoint',muopt,spec)
+  control$callback('newpoint',muopt,spec,control)
   if(!(muopt$status %in% c(0,2))) 
-    message(muopt$status, ' ', muopt$message,' (',muopt$objective,') iter ',muopt$iterations)
+    message(control$jobname,' ',muopt$status, ' ', muopt$message,' (',muopt$objective,') iter ',muopt$iterations)
   
   for(i in seq_along(newset$parset)) {
     newset$parset[[i]]$mu[np] <- muopt$solution[i]
@@ -358,7 +367,7 @@ badpoints <- function(pset,control) {
       }
     }
   }
-  if(!all(okpt)) message('remove points', sprintf(' %.2e',p[!okpt]))
+  if(!all(okpt)) message(control$jobname, ' ', date(), ' remove points', sprintf(' %.2e',p[!okpt]))
   p <- p[okpt]
 
   pset$pargs <- p2a(p)
@@ -427,12 +436,12 @@ ml <- function(spec,pset,control) {
 #  print(system.time(fish <- fLL(args,spec,skel)))
 #  message('fish eigs:');print(eigen(fish,only.values=TRUE)$values)
 #  message('Fisher matrix:'); print(system.time(print(fLL(args,spec,skel))))
-  message('gLL: '); print(system.time(print(gLL(args,spec,skel))))
-  message('dLL: '); print(system.time(print(dLL(args,spec,skel))))
+#  message('gLL: '); print(system.time(print(gLL(args,spec,skel))))
+#  message('dLL: '); print(system.time(print(dLL(args,spec,skel))))
 #  stop('debug')
 #  dLL <- function(args,spec,skel) numDeriv::grad(LL,args,method='simple',spec=spec,skel=skel)
   opt <- optim(args,LL,gLL,method='BFGS',
-               control=list(trace=0,REPORT=10,maxit=500,lmm=60,abstol=1e-4,reltol=1e-14),
+               control=list(trace=0,REPORT=10,maxit=10*length(args),lmm=60,abstol=1e-4,reltol=1e-14),
                spec=spec,skel=skel)
   sol <- unflatten(opt$par)
 
@@ -453,10 +462,11 @@ ml <- function(spec,pset,control) {
 
   if(isTRUE(control$gradient)) {
     opt$gradient <- gLL(flatten(opt$par),spec,skel)
+    names(opt$gradient) <- nm
   }
   if(isTRUE(control$fisher)) {
     opt$fisher <- fLL(flatten(opt$par),spec,skel)
-    dimnames(opt$fisher) <- list(nm,nm)
+    dimnames(opt$fisher) <- list(row=nm,col=nm)
   }
   if(isTRUE(control$hessian)) {
     opt$hessian <- hLL(flatten(opt$par),spec,skel)

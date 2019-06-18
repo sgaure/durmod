@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <utility>
 #include <R.h>
+#include <Rmath.h>
 #include <R_ext/Applic.h>
 #include <Rcpp.h>
 #include <omp.h>
@@ -21,48 +22,26 @@ typedef struct {
   int nlevels;
 } FACTORPAR;
 
+
+// return log(1 + sum(exp(x+y)))
 inline double logsumofexp(const int n,const double *x, const double *y) {
   if(n < 1) stop("logsumofexp called with n < 1 (%d)",n);
   double cur = x[0]+y[0];
-  for(int i = 1; i < n; i++) {
-    double next = x[i]+y[i];
-    if(cur > next) {
-      cur = cur + log1p(exp(next-cur));
-    } else {
-      cur = next + log1p(exp(cur-next));
-    }
-  }
+  for(int i = 1; i < n; i++) cur = R::logspace_add(cur,x[i]+y[i]);
   return cur;
 }
 
-inline double logsumofexp1(const int n,const double *x) {
-  if(n < 1) stop("logsumofexp called with n < 1 (%d)",n);
-  double cur = x[0];
-  for(int i = 1; i < n; i++) {
-    double next = x[i];
-    if(cur > next) {
-      cur = cur + log1p(exp(next-cur));
-    } else {
-      cur = next + log1p(exp(cur-next));
-    }
-  }
-  return cur;
-}
-
-inline double logsumupd(const double logsum, const double x) {
-  return ( (logsum > x) ? (logsum + log1p(exp(x-logsum))) : (x + log1p(exp(logsum-x))));
-}
 // a2logp <- function(a) {b <- c(0,a); logp <- b - logsumofexp(b,0); ifelse(is.na(logp),0,logp)}
 void a2logp(const int n, const double *a, double *logp) {
-  double *b = new double[n+1];
-  b[0] = 0;
-  for(int i = 0; i < n; i++) b[i+1] = a[i];
-  double lsum = logsumofexp1(n+1,b);
-  for(int i = 0; i <= n; i++) {
-    logp[i] = b[i]-lsum;
-  }
-  delete [] b;
+  if(n < 0) stop("a2logp called with negative n (%d)",n);
+
+  double lsum = 0;
+  for(int i = 0; i < n; i++) lsum = R::logspace_add(lsum,a[i]);
+  logp[0] = -lsum;
+  for(int i = 0; i < n; i++) logp[i+1] = a[i]-lsum;
+  return;
 }
+
 
 // Taken from Martin Maechler https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
 // "Accurately Computing log(1-exp(-a)), Assessed by the Rmpfr package"
@@ -71,6 +50,7 @@ inline double log1mexp(double x) {
   return (x <= M_LN2) ? log(-expm1(-x)) : log1p(-exp(-x));
 }
 
+/*
 // log(1+exp(x))
 inline double log1pexp(double x) {
   if(x <= -37) return exp(x);
@@ -78,7 +58,7 @@ inline double log1pexp(double x) {
   if(x <= 33.3) return x+exp(-x);
   return x;
 }
-
+*/
 // compute exp(-x)/(1-exp(-x))
 // by logarithms exp(-x - log(1-exp(-x)))
 inline double expfrac(double x,double extra = 0.0) {
@@ -89,22 +69,16 @@ inline double expfrac(double x,double extra = 0.0) {
 //      computeloglik(d[i], lh, mup, npoints, llspell)
 inline void obsloglik(const int tr, const Timing timing, const double *lh, double dur,
 		      double **mup, const int npoints, int transitions,
-		      const int nrisks, const bool *riskmask,
+		      const bool *riskmask,
 		      double *llspell) {
-  /*
-  if(tr != 0) {
-    for(int j = 0; j < npoints; j++) {
-      llspell[j] += lh[tr-1] + mup[tr-1][j];
-    }
-  }
-  */
+
   // If there is a transition, add the loghazard
   // divide by the survival prob up until now, i.e. subtract its log
   for(int j = 0; j < npoints; j++) {
     double logsumhaz = 0;
     for(int t = 0; t < transitions; t++) {
-      if(nrisks > 0 && !riskmask[t]) continue;
-      logsumhaz = logsumupd(logsumhaz, lh[t]+mup[t][j]);
+      if(riskmask && !riskmask[t]) continue;
+      logsumhaz = R::logspace_add(logsumhaz, lh[t]+mup[t][j]);
     }
 
     switch(timing) {
@@ -118,12 +92,11 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
     }
     if(tr > 0) {
       switch(timing) {
+      case interval:
+	llspell[j] += log1mexp(dur*exp(logsumhaz)) - logsumhaz;
       case exact:
       case logit:
 	llspell[j] += lh[tr-1] + mup[tr-1][j];
-	break;
-      case interval:
-	llspell[j] += log1mexp(dur*exp(logsumhaz)) - logsumhaz + lh[tr-1] + mup[tr-1][j];
 	break;
       }
     }
@@ -134,7 +107,7 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
 inline void gobsloglik(const int tr, const Timing timing, const double *lh, double dur, int obs,
 		       double **mup, const int npoints, int transitions,
 		       int npars, int *nfacs,
-		       const int nrisks, const bool *riskmask,
+		       const bool *riskmask,
 		       int *nvars,
 		       double **matp,
 		       FACTOR **factors,
@@ -149,15 +122,16 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
     double logsumhaz = 0;
     if(timing == logit || (timing == interval && t >= 0)) {
       for(int tt = 0; tt < transitions; tt++) {
-	if(nrisks > 0 && !riskmask[tt]) continue;
-	logsumhaz = logsumupd(logsumhaz, lh[tt] + mup[tt][j]);
+	if(riskmask && !riskmask[tt]) continue;
+	logsumhaz = R::logspace_add(logsumhaz, lh[tt] + mup[tt][j]);
       }
+      sumhaz = exp(logsumhaz);
     }
-    sumhaz = exp(logsumhaz);
+
     double *dll = &dllspell[j*npars];
     int pos = 0;
     for(int tt = 0; tt < transitions; tt++) {
-      if(nrisks > 0 && !riskmask[tt]) {pos += nvars[tt]+nfacs[tt]+npoints;continue;}
+      if(riskmask && !riskmask[tt]) {pos += nvars[tt]+nfacs[tt]+npoints;continue;}
       const double haz = exp(lh[tt] + mup[tt][j]);
       const double *mat = &matp[tt][obs*nvars[tt]];
 
@@ -203,19 +177,18 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       pos += npoints;
     }
     if(t >= 0) {
-      double *dll = &dllspell[j*npars];
+      //      double *dll = &dllspell[j*npars];
       int pos = inipos;
-      double dLdx,dHdx,haz,hazfrac;
-      // compute exp(-x)/(1-exp(-x))
-      // by logarithms exp(-x - log(1-exp(-x)))
-      double edhfrac,hazedh;
-      if(timing == interval) {
-	edhfrac = expfrac(dur*sumhaz, log(dur)+lh[t]+mup[t][j]);
-	//	printf("edhfrac %.4e\n",edhfrac);
-	haz = exp(lh[t] + mup[t][j]);
-	// compute haz/sumhaz as exp(log(haz) - log(sumhaz))
-	hazfrac = exp(lh[t] + mup[t][j] - logsumhaz);
-      }
+      // complicated expression for interval timing, the derivative of llspell wrt to a parameter
+      // With H the sum of hazards, L the log hazard of transition t, and d duration, we compute
+      // the derivative w.r.t x of the log likelihood
+      // log(1-exp(-d H)) - log(H) + L
+      
+      double funnyexpr;
+      if(timing == interval)
+	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) +
+	  expm1(lh[t]+mup[t][j]-logsumhaz);
+
       for(int k = 0; k < nvars[t]; k++) {
 	switch(timing) {
 	case exact:
@@ -223,24 +196,16 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	  dll[pos++] += tmat[k];
 	  break;
 	case interval:
-	  // complicated expression, the derivative of llspell wrt to a parameter
-	  // With H the sum of hazards, L the log hazard, and d duration, we have
-	  // the derivative w.r.t x
-	  // exp(-dH) * dH/dx * d /(1-exp(-dH)) + (dH/dx)/H + dL/dx
-	  // the function expfrac above computes exp(-x)/(1-exp(-x))
-	  dLdx = tmat[k];
-	  dHdx = haz * dLdx;
-	  dll[pos++] += (edhfrac+hazfrac+1)*dLdx;
-	  //	  dll[pos++] += exp(-dur*sumhaz)*dHdx * dur / edh + dHdx/sumhaz + dLdx;
+	  dll[pos++] -= tmat[k]*funnyexpr;
 	  break;
 	}
       }
       
       const FACTOR *fac = factors[t];
-      for(int j = 0; j < nfacs[t]; j++) {
-	const int fval = fac[j].val[obs];
-	if(fval <= 0) {pos += fac[j].nlevels; continue;};  // skip NA-levels, i.e. reference
-	double *x = fac[j].x;
+      for(int jj = 0; jj < nfacs[t]; jj++) {
+	const int fval = fac[jj].val[obs];
+	if(fval <= 0) {pos += fac[jj].nlevels; continue;};  // skip NA-levels, i.e. reference
+	double *x = fac[jj].x;
 	double f = (x != 0) ? x[obs] : 1.0;
 	switch(timing) {
 	case exact:
@@ -248,12 +213,10 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	  dll[pos + fval-1] += f;
 	  break;
 	case interval:
-	  dLdx = f;
-	  dHdx = haz * dLdx;
-	  dll[pos + fval-1] += (edhfrac+hazfrac+1)*dLdx;
+	  dll[pos + fval-1] -= f*funnyexpr;
 	  break;
 	}
-	pos += fac[j].nlevels;
+	pos += fac[jj].nlevels;
       }
       
       // and for the mus
@@ -263,9 +226,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	dll[pos+j] += 1;
 	break;
       case interval:
-	dHdx = haz;
-	dLdx = 1.0;
-	dll[pos+j] += (edhfrac+hazfrac+1)*dLdx;
+	dll[pos+j] -= funnyexpr;
 	break;
       }
     }
@@ -555,7 +516,7 @@ NumericVector cloglik(List spec, List pset,
       const bool *riskmask = nrisks>0 ? &riskmasks[(state[i]-1)*transitions] : 0;
       for(int t = 0; t < transitions; t++) {
 	lh[t] = 0.0;
-	if(nrisks > 0 && !riskmask[t]) continue;
+	//	if(riskmask && !riskmask[t]) continue;
 	const double *mat = &matp[t][i*nvars[t]];
 	const double *beta = betap[t];
 	for(int k = 0; k < nvars[t]; k++) {
@@ -573,11 +534,10 @@ NumericVector cloglik(List spec, List pset,
       
 
       // update llspell with the observation log likelihood 
-      obsloglik(d[i], timing, lh, duration[i], mup, npoints, transitions, nrisks, riskmask, llspell);
+      obsloglik(d[i], timing, lh, duration[i], mup, npoints, transitions, riskmask, llspell);
       // update dllspell with the gradient of the observation log likelihood
       if(dograd) gobsloglik(d[i], timing, lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
-			    nrisks, riskmask, nvars, matp,
-			    factors, dllspell);
+			    riskmask, nvars, matp, factors, dllspell);
     }
     
     // We have collected the loglikelihood of a spell, one for each masspoint
@@ -652,7 +612,15 @@ NumericVector cloglik(List spec, List pset,
     ret.attr("gradient") = retgrad;
     delete [] grad;
   }
-  if(dofisher)  ret.attr("fisher") = *retfisher;
-
+  if(dofisher)  {
+    // fill the lower half of the fisher matrix
+    // read consecutively, write with stride, that's typically faster
+    for(int i = 0; i < totalpars; i++) {
+      for(int j = 0; j < i; j++) {
+	fisher[j*totalpars + i] = fisher[i*totalpars + j];
+      }
+    }
+    ret.attr("fisher") = *retfisher;
+  }
   return ret;
 }

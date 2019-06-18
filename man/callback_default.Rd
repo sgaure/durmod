@@ -4,7 +4,7 @@
 \alias{callback_default}
 \title{Default callback function for mphcrm}
 \usage{
-callback_default(fromwhere, opt, spec)
+callback_default(fromwhere, opt, spec, control, ...)
 }
 \description{
 Default callback function for mphcrm

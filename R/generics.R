@@ -39,9 +39,14 @@ print.mphcrm.pset <- function(x, ...) {
 }
 
 #' @export
-flatten <- function(x, recursive=TRUE, use.names=TRUE, exclude=attr(x,'exclude')) {
+flatten <- function(x, exclude=attr(x,'exclude')) {
   class(x) <- setdiff(class(x),'mphcrm.pset')
-  vec <- unlist(x, TRUE, use.names)
+  vec <- unlist(x)
+  # fix the names so more readable
+  # parset.t1.{pars,mu,facs}.x <- t1.x
+  newnames <- gsub('^parset\\.(.*)\\.(pars|mu|facs)\\.(.*)','\\1.\\3',names(vec))
+  names(vec) <- newnames
+
   skel <- attr(vec,'skeleton')
   class(skel) <- c('mphcrm.pset',class(skel))
   attr(vec,'skeleton') <- skel
