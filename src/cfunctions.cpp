@@ -251,7 +251,7 @@ inline void updategradient(int npoints, double *dllspell, double *llspell, doubl
 		     int transitions, int npars, int *nvars, int *faclevels, const double *pargs, 
 		     int totalpars, double *spellgrad, double *grad) {
 
-  (void) memset(spellgrad, 0, totalpars*sizeof(double));
+  (void) memset(spellgrad, 0, totalpars*sizeof(*spellgrad));
 
   // compute gradient
   // we have the gradient of each llspell component in dllspell
@@ -502,9 +502,13 @@ NumericVector cloglik(List spec, List pset,
 
   // Then some thread private storage which are static in the parallel for below.
   // We don't want to allocate in the loop.
-  static double *llspell, *lh, *dllspell, *spellgrad;  // must be static to allocate thread private
-  static int *nonzero;
-#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, nonzero)
+ // must be static to allocate thread private
+  static double *lh;
+  static double *spellgrad, *llspell, *dllspell; 
+  int *nonzero; // only used temporarily in critical section, so not thread local
+  if(dofisher) nonzero = new int[totalpars];
+
+#pragma omp threadprivate(llspell,dllspell, lh, spellgrad)
   // Allocate it
 #pragma omp parallel num_threads(nthreads)
   {  
@@ -514,16 +518,14 @@ NumericVector cloglik(List spec, List pset,
       dllspell = new double[npoints*npars];
       spellgrad = new double[totalpars];
     }
-    if(dofisher) nonzero = new int[totalpars];
-
   }
 
   // Remember not to use any R-functions (or allocate Rcpp storage) inside the parallel region.
 
 #pragma omp parallel for reduction(+:grad[:gradsize], LL) num_threads(nthreads) schedule(guided)
   for(int spellno = 0; spellno < nspells; spellno++) {
-    memset(llspell, 0, npoints*sizeof(double));
-    if(dograd) memset(dllspell, 0, npoints*npars*sizeof(double));
+    memset(llspell, 0, npoints*sizeof(*llspell));
+    if(dograd) memset(dllspell, 0, npoints*npars*sizeof(*dllspell));
     for(int i = spellidx[spellno]; i < spellidx[spellno+1]; i++) {
       
       // compute the log hazard for this observation for each masspoint and transition
@@ -547,7 +549,6 @@ NumericVector cloglik(List spec, List pset,
 	  if(x != 0) lh[t] += fpar[j].par[fval-1] * x[i]; else lh[t] += fpar[j].par[fval-1];
 	}
       }
-      
 
       // update llspell with the observation log likelihood 
       obsloglik(d[i], timing, lh, duration[i], mup, npoints, transitions, riskmask, llspell);
@@ -565,6 +566,7 @@ NumericVector cloglik(List spec, List pset,
     } else {
       // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
+      // for very long spell we should perhaps do a compensated addition, Kahan or Neumaier?
       LL += ll;
       
       if(dograd) {
@@ -590,9 +592,8 @@ NumericVector cloglik(List spec, List pset,
       delete [] dllspell;
       delete [] spellgrad;
     }
-    if(dofisher) delete [] nonzero;
   }
-
+  if(dofisher) delete [] nonzero;
 
   // if anything remains in the gradient blocks, dsyrk it into the fisher matrix
   if(dofisher && gradfill > 0) {
@@ -624,7 +625,7 @@ NumericVector cloglik(List spec, List pset,
   NumericVector ret = NumericVector::create(LL);
   if(dograd) {
     NumericVector retgrad(totalpars);
-    (void) memcpy(REAL(retgrad), grad, gradsize*sizeof(double));
+    (void) memcpy(REAL(retgrad), grad, gradsize*sizeof(*grad));
     ret.attr("gradient") = retgrad;
     delete [] grad;
   }

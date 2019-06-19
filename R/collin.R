@@ -22,8 +22,6 @@ collin <- function(mat,eps=NULL,weps=0.01) {
     rank <- attr(ch,'rank')
     okcol <- 1:rank
   } else {
-#    okcol <- which(diag(ch) > eps*diag(mat))
-#    rank <- length(okcol)
     rank <- min(which(c(diag(ch),-Inf) <= eps*c(sqrt(diag(mat)),1)))-1
     okcol=1:rank
   }
@@ -53,11 +51,9 @@ collin <- function(mat,eps=NULL,weps=0.01) {
   res <- list()
   for(i in 1:ncol(cf)) {
     val <- sort(abs(cf[,i]))
-    # t
-    n <- which.max(diff(log(val)))+1
-    thres <- val[n]
-    wvars <- which(abs(cf[,i]) >= thres)
-#    wvars <- which(abs(cf[,i]) >= weps)
+#    thres <- val[which.max(diff(log(val)))+1]
+#    wvars <- which(abs(cf[,i]) >= thres)
+    wvars <- which(abs(cf[,i]) >= weps)
     wnames <- weightnames[wvars]
     frm <- data.frame(weight=cf[wvars,i],row.names=wnames)
     res[[i]] <- frm
@@ -66,3 +62,4 @@ collin <- function(mat,eps=NULL,weps=0.01) {
   gc()
   res
 }
+

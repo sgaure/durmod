@@ -163,8 +163,9 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   }
   
     
-
   pset <- makeparset(spec,1)
+  # reset timer
+  assign('lastfull',Sys.time(),envir=environment(mphcrm.callback))
   pointiter(spec,pset,control)
 }
 
@@ -189,50 +190,50 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
                method='BFGS', gdiff=FALSE, minprob=1e-6, eqtol=1e-3, newprob=1e-4, jobname='', 
-               callback=callback_default,
-               ifile=NULL)
+               tspec='%T',
+               callback=mphcrm.callback)
   args <- list(...)
   bad <- !(names(args) %in% names(ctrl))
   if(any(bad)) {warning("unknown control parameter(s): ", paste(names(args)[bad], collapse=' '))}
-  nm <- names(ctrl)[names(ctrl) %in% names(args)]
-  ctrl[nm] <- args[nm]
+  ctrl[names(args)] <- args
   ctrl
 }
 
 #' Default callback function for mphcrm
 #' @export
-callback_default <- function(fromwhere, opt, spec, control, ...) {
-  
-  if(fromwhere=='interrupt' && length(control$ifile)) {
-    message(control$jobname, ' ', date(), ' job interrupted, saving to ',control$ifile)
-    save(opt,spec,control, file=control$ifile)
-  }
-  jobname <- control$jobname
-  if(is.logical(opt$convergence) && opt$convergence != 0) {
-    message(jobname, ' ', date(), ' ', fromwhere, ' optimization failed to converge: ',opt$message,'(',opt$convergence,')')
-  }
-  if(!identical(fromwhere, 'full')) return()
-#  if(!identical(fromwhere, 'full')) {message(jobname,' ',date(), ' optimized ',fromwhere);return(TRUE)}
-  if(!is.null(opt$fisher)) {
-    rc <- rcond(opt$fisher)
-  } else {
-    rc <- NA
-  }
-  if(!is.null(opt$gradient)) {
-    grd <- sqrt(sum(opt$gradient^2))
-  } else {
-    grd <- NA
-  }
-  probs <- a2p(opt$par$pargs)
-  message(jobname,' ',date(), sprintf(' loglik %.4f grad %.3g minprob %.4g rcond %.2g (%d points)',
-                          -opt$value, grd, min(probs), rc, length(opt$par$pargs)+1))
-  if(rc < sqrt(.Machine$double.eps)) {message(sprintf('%s  ***bad condition: %.2e',jobname,rc)); return(FALSE)}
-  return(TRUE)
-}
+mphcrm.callback <- local({
+  lastfull <- 0
+  function(fromwhere, opt, spec, control, ...) {
 
+    now <- Sys.time()
+    jobname <- control$jobname
+    if(is.numeric(opt$convergence) && opt$convergence != 0) {
+      if(fromwhere != 'newpoint' || opt$convergence != 2)
+        cat(jobname, format(now,control$tspec), fromwhere, 'failed: "',opt$convergence, ' ', opt$message,'\n')
+    }
+
+
+    if(!identical(fromwhere, 'full')) return()
+    tdiff <- timestr(difftime(now,lastfull,units='s'))
+    lastfull <<- now
+    rc <- if(!is.null(opt$fisher)) rcond(opt$fisher) else NA
+    grd <- if(!is.null(opt$gradient)) sqrt(sum(opt$gradient^2)) else NA
+    probs <- a2p(opt$par$pargs)
+    cat(jobname,format(now,control$tspec), 
+        sprintf('iter %d %s: %.4f grad %.3g minprob %.4g rcond %.2g (%d points)\n',
+                control$mainiter, tdiff,
+                -opt$value, grd, min(probs), rc, length(opt$par$pargs)+1))
+    #  if(rc < sqrt(.Machine$double.eps)) {message(sprintf('%s  ***bad condition: %.2e',jobname,rc)); return(FALSE)}
+  }
+})
 
 pointiter <- function(spec,pset,control) {
   # optimize null model first
+  usercallback <- control$callback
+  control$callback <- function(...) {
+    tt <- try(usercallback(...))
+    if(inherits(tt,'try-error')) stop('Error in callback function ')
+  }
   arg0 <- flatten(pset)
   arg0[] <- 0
   pset <- unflatten(arg0)
@@ -250,12 +251,16 @@ pointiter <- function(spec,pset,control) {
   opt0$par <- pset
   control$callback('nullmodel',opt0,spec,control)
   intr <- FALSE
-  iopt <- opt <- opt0 
+  iopt <- opt <- list(nullmodel=opt0)
   tryCatch(
     for(i in seq_len(control$iters)) {
+      control$mainiter <- i
+      old <- opt
       opt <- ml(spec,pset,control)
       control$callback('full',opt, spec,control)
       pset <- addpoint(spec,opt$par,opt$value,control)
+      opt <- c(list(opt),old)
+      names(opt) <- c(paste('iter',i,sep=''),names(old))
     },
     error=function(...) {
       intr <<- TRUE; iopt <<- structure(opt,error=...); 
@@ -264,7 +269,7 @@ pointiter <- function(spec,pset,control) {
     interrupt=function(...) {
       intr <<- TRUE
       iopt <<- structure(opt,interrupted=TRUE)
-      control$callback('interrupt', opt, spec, control)
+      try(control$callback('interrupt', iopt, spec, control))
       warning("estimation interrupted, returning most recent estimate ",...)
     },
     finally=if(intr) opt <- iopt)
@@ -334,8 +339,6 @@ newpoint <- function(spec,pset,value,control) {
                                     maxtime=120,maxeval=10000,population=10*length(args)))
   muopt$convergence <- muopt$status
   control$callback('newpoint',muopt,spec,control)
-  if(!(muopt$status %in% c(0,2))) 
-    message(control$jobname,' ',muopt$status, ' ', muopt$message,' (',muopt$objective,') iter ',muopt$iterations)
   
   for(i in seq_along(newset$parset)) {
     newset$parset[[i]]$mu[np] <- muopt$solution[i]
@@ -353,22 +356,25 @@ badpoints <- function(pset,control) {
   np <- length(pset$pargs)+1
   p <- a2p(pset$pargs)
   okpt <- p > control$minprob
+  okpt <- rep(TRUE,length(p))  # don't remove small probs
   for(i in seq_len(np)) {
     mui <- sapply(pset$parset, function(pp) pp$mu[i])
     for(j in seq_len(i-1)) {
       if(!okpt[j]) next
       muj <- sapply(pset$parset, function(pp) pp$mu[j])
       if(max(abs(exp(muj) - exp(mui))) < control$eqtol) {
-        message(sprintf('points %d and %d are equal',j,i))
+        cat(sprintf('points %d and %d are equal\n',j,i))
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
         colnames(mumat) <- names(pset$parset)
         print(cbind(prob=c(p[j],p[i]),mumat))
         okpt[i] <- FALSE
+        p[j] <- p[j]+p[i]
       }
     }
   }
-  if(!all(okpt)) message(control$jobname, ' ', date(), ' remove points', sprintf(' %.2e',p[!okpt]))
+  if(!all(okpt)) 
+    cat(control$jobname,  format(Sys.time(),control$tspec), 'remove points', sprintf(' %.2e',p[!okpt]),'\n')
   p <- p[okpt]
 
   pset$pargs <- p2a(p)
