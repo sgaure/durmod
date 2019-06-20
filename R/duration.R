@@ -483,7 +483,7 @@ addpoint <- function(spec,pset,value,control) {
   # optimize probabilities
   newset <- pset
   control$minprob <- 0
-  repeat {
+  for(i in 1:5) {
     newset <- newpoint(spec,newset,value,control)
     newset <- optdist(spec,newset,control)
     newset <- badpoints(newset,control)
