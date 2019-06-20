@@ -42,6 +42,18 @@ pdist <- function(pset) {
 }
 
 #' @export
+pdist.exp <- function(pset,round=20) {
+  mus <- round(exp(sapply(pset$parset, function(pp) pp$mu)),round)
+  if(is.null(colnames(mus))) {
+    mus <- t(mus)
+    colnames(mus) <- names(pset$parset)
+  }
+  rownames(mus) <- sprintf('point %2d',seq_len(nrow(mus)))
+  prob <- a2p(pset$parg)
+  cbind(prob,mus)
+}
+
+#' @export
 pmoments <- function(pset) {
   dist <- pdist(pset)
   mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
@@ -51,10 +63,10 @@ pmoments <- function(pset) {
 }
 
 #' @export
-pmoments.exp <- function(pset) {
-  dist <- pdist(pset)
-  mean <- rowSums(apply(dist, 1, function(x) x[1]*exp(x[-1])))
-  variance <- rowSums(apply(dist, 1, function(x) x[1]*(exp(x[-1])-mean)^2))
+pmoments.exp <- function(pset,round=20) {
+  dist <- pdist.exp(pset,round)
+  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
+  variance <- rowSums(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2))
   sd <- sqrt(variance)
   cbind(mean,variance,sd)
 }

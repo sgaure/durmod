@@ -8,19 +8,23 @@ mphcrm.control(...)
 }
 \arguments{
 \item{...}{parameters to change \itemize{
-  \item \code{callback}
-  A user-specified \code{function(fromwhere, opt, spec)} which is called after each optimization step.
-  It can be used to report what is happening, check whatever it wants, and optionally stop
-  the estimation by calling stop(). In this case, \code{mphcrm()} will return with the
-  most recently estimated set of parameters. See the help on \code{\link{callback_default}} for information
-  on the argument.
+\item \code{callback} A
+  user-specified \code{function(fromwhere, opt, spec, control,
+  ...)} which is called after each optimization step.  It can be
+  used to report what is happening, check whatever it wants, and
+  optionally stop the estimation by calling stop(). In this case,
+  \code{mphcrm()} will return with the most recently estimated set
+  of parameters. See the help on \code{\link{callback_default}} for
+  information on the argument.
 }}
 }
 \value{
-list of control parameters suitable for the \code{control} argument of \code{\link{mphcrm}}
+list of control parameters suitable for the \code{control}
+  argument of \code{\link{mphcrm}}
 }
 \description{
-Modify the default estimation parameters for \code{\link{mphcrm}}
+Modify the default estimation parameters for
+  \code{\link{mphcrm}}
 }
 \details{
 [TBS]

@@ -172,29 +172,34 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 #' Control parameters for mphcrm
 #'
 #' @description
-#' Modify the default estimation parameters for \code{\link{mphcrm}}
+#' Modify the default estimation parameters for
+#'   \code{\link{mphcrm}}
 #' @param ...
 #' parameters to change \itemize{
-#'   \item \code{callback}
-#'   A user-specified \code{function(fromwhere, opt, spec)} which is called after each optimization step.
-#'   It can be used to report what is happening, check whatever it wants, and optionally stop
-#'   the estimation by calling stop(). In this case, \code{mphcrm()} will return with the
-#'   most recently estimated set of parameters. See the help on \code{\link{callback_default}} for information
-#'   on the argument.
+#' \item \code{callback} A
+#'   user-specified \code{function(fromwhere, opt, spec, control,
+#'   ...)} which is called after each optimization step.  It can be
+#'   used to report what is happening, check whatever it wants, and
+#'   optionally stop the estimation by calling stop(). In this case,
+#'   \code{mphcrm()} will return with the most recently estimated set
+#'   of parameters. See the help on \code{\link{callback_default}} for
+#'   information on the argument.
 #' }
 #' @return
-#' list of control parameters suitable for the \code{control} argument of \code{\link{mphcrm}}
+#' list of control parameters suitable for the \code{control}
+#'   argument of \code{\link{mphcrm}}
 #' @details
 #' [TBS]
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               method='BFGS', gdiff=FALSE, minprob=1e-6, eqtol=1e-3, newprob=1e-4, jobname='', 
-               tspec='%T',
+               method='BFGS', gdiff=FALSE, minprob=0, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
+               ll.improve=1e-3, e.improve=1e-3,
+               tspec='%T', newpoint.maxtime=120,
                callback=mphcrm.callback)
   args <- list(...)
   bad <- !(names(args) %in% names(ctrl))
-  if(any(bad)) {warning("unknown control parameter(s): ", paste(names(args)[bad], collapse=' '))}
+  if(any(bad)) {message("unknown control parameter(s): ", paste(names(args)[bad], collapse=' '))}
   ctrl[names(args)] <- args
   ctrl
 }
@@ -202,38 +207,43 @@ mphcrm.control <- function(...) {
 #' Default callback function for mphcrm
 #' @export
 mphcrm.callback <- local({
-  lastfull <- 0
+  lastfull <- Sys.time()
   function(fromwhere, opt, spec, control, ...) {
-
     now <- Sys.time()
     jobname <- control$jobname
-    if(is.numeric(opt$convergence) && opt$convergence != 0) {
-      if(fromwhere != 'newpoint' || opt$convergence != 2)
-        cat(jobname, format(now,control$tspec), fromwhere, 'failed: "',opt$convergence, ' ', opt$message,'\n')
+    if(fromwhere == 'removepoints') {
+      p <- pdist(opt)[,'prob']
+      bad <- list(...)[['remove']]
+      cat(jobname,  format(Sys.time(),control$tspec), 'remove probs', sprintf(' %.2e',p[bad]),'\n')
+    } else {
+      if(is.numeric(opt$convergence) && opt$convergence != 0) {
+      if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) 
+        cat(jobname, format(now,control$tspec), fromwhere, 'convstatus:"',opt$convergence, opt$message,'"\n')
+      }
     }
 
-
-    if(!identical(fromwhere, 'full')) return()
+    if(fromwhere != 'full') return()
     tdiff <- timestr(difftime(now,lastfull,units='s'))
     lastfull <<- now
     rc <- if(!is.null(opt$fisher)) rcond(opt$fisher) else NA
     grd <- if(!is.null(opt$gradient)) sqrt(sum(opt$gradient^2)) else NA
-    probs <- a2p(opt$par$pargs)
+    p <- a2p(opt$par$pargs)
     cat(jobname,format(now,control$tspec), 
-        sprintf('iter %d %s: %.4f grad %.3g minprob %.4g rcond %.2g (%d points)\n',
-                control$mainiter, tdiff,
-                -opt$value, grd, min(probs), rc, length(opt$par$pargs)+1))
+        sprintf('i:%d pts:%d L:%.4f g:%.3g mp:%.5g rcond:%.2g e:%.4f t:%s\n',
+                control$mainiter, length(opt$par$pargs)+1, opt$value, grd, min(p), rc, -sum(p*log(p)),
+                tdiff))
     #  if(rc < sqrt(.Machine$double.eps)) {message(sprintf('%s  ***bad condition: %.2e',jobname,rc)); return(FALSE)}
   }
 })
 
+
 pointiter <- function(spec,pset,control) {
   # optimize null model first
-  usercallback <- control$callback
-  control$callback <- function(...) {
-    tt <- try(usercallback(...))
-    if(inherits(tt,'try-error')) stop('Error in callback function ')
-  }
+#  usercallback <- control$callback
+#  control$callback <- function(...) {
+#    tt <- try(usercallback(...))
+#    if(inherits(tt,'try-error')) stop('Error in callback function ')
+#  }
   arg0 <- flatten(pset)
   arg0[] <- 0
   pset <- unflatten(arg0)
@@ -248,31 +258,49 @@ pointiter <- function(spec,pset,control) {
   for(i in seq_along(pset$parset)) {
     pset$parset[[i]]$mu[] <- opt0$par[i]
   }
+  opt0$value <- -opt0$value
   opt0$par <- pset
+  opt0$mainiter <- 0
   control$callback('nullmodel',opt0,spec,control)
   intr <- FALSE
   iopt <- opt <- list(nullmodel=opt0)
   tryCatch(
-    for(i in seq_len(control$iters)) {
-      control$mainiter <- i
-      old <- opt
-      opt <- ml(spec,pset,control)
-      control$callback('full',opt, spec,control)
-      pset <- addpoint(spec,opt$par,opt$value,control)
-      opt <- c(list(opt),old)
-      names(opt) <- c(paste('iter',i,sep=''),names(old))
+    {
+      i <- 0; done <- FALSE
+      while(!done) {
+        i <- i+1
+        control$mainiter <- i
+        opt <- c(list(ml(spec,pset,control)), opt)
+        opt[[1]]$mainiter <- i
+        names(opt)[1] <- sprintf('iter%d',i)
+        control$callback('full',opt[[1]], spec,control)
+        ll.improve <- opt[[1]]$value - opt[[2]]$value
+        e.improve <- abs(opt[[1]]$entropy - opt[[2]]$entropy)
+        done <- (ll.improve < control$ll.improve && e.improve < control$e.improve)|| i >= control$iters
+        if(!done) pset <- addpoint(spec,opt[[1]]$par,opt[[1]]$value,control)
+      }
     },
-    error=function(...) {
-      intr <<- TRUE; iopt <<- structure(opt,error=...); 
-      warning('error occured, returning most recent estimate: ',...)
+    error=function(e) {
+      intr <<- TRUE; iopt <<- structure(opt,status=conditionMessage(e)); 
+      warning(e, 'Error occured, returning most recent estimate')
     },
-    interrupt=function(...) {
+    interrupt=function(e) {
       intr <<- TRUE
-      iopt <<- structure(opt,interrupted=TRUE)
-      try(control$callback('interrupt', iopt, spec, control))
-      warning("estimation interrupted, returning most recent estimate ",...)
+      iopt <<- structure(opt,status='interrupted')
+ #     try(control$callback('interrupt', iopt, spec, control))
+      warning(e, "returning most recent estimate ")
     },
     finally=if(intr) opt <- iopt)
+
+  if(!intr) {
+    badset <- badpoints(opt[[1]]$par,control)
+    if(isTRUE(attr(badset, 'badremoved'))) {
+      cat(sprintf('redo bad prob, ll=%.6f\n',opt[[1]]$value))
+      opt[[1]]$par <- optfull(spec,badset,control)
+      cat(sprintf('new ll=%.6f\n',opt[[1]]$value))
+    }
+  }
+
   opt
 }
 
@@ -335,8 +363,9 @@ newpoint <- function(spec,pset,value,control) {
   }
   args <- runif(length(newset$parset),-10,1)
   muopt <- nloptr::nloptr(args, fun, lb=rep(-10,ntrans), ub=rep(1,ntrans),
-                          opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else value-1e-2,
-                                    maxtime=120,maxeval=10000,population=10*length(args)))
+                          opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
+                                    maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
+  muopt$objective <- -muopt$objective
   muopt$convergence <- muopt$status
   control$callback('newpoint',muopt,spec,control)
   
@@ -344,7 +373,7 @@ newpoint <- function(spec,pset,value,control) {
     newset$parset[[i]]$mu[np] <- muopt$solution[i]
   }
   if(gdiff) {
-    newpr <- c((1-1e-5)*pr,1e-5)
+    newpr <- c((1-control$newprob)*pr,control$newprob)
     #  newpr <- newpr/sum(newpr)
     newset$pargs[] = p2a(newpr)
   }
@@ -356,78 +385,75 @@ badpoints <- function(pset,control) {
   np <- length(pset$pargs)+1
   p <- a2p(pset$pargs)
   okpt <- p > control$minprob
-  okpt <- rep(TRUE,length(p))  # don't remove small probs
+  jobname <- control$jobname
   for(i in seq_len(np)) {
     mui <- sapply(pset$parset, function(pp) pp$mu[i])
     for(j in seq_len(i-1)) {
       if(!okpt[j]) next
       muj <- sapply(pset$parset, function(pp) pp$mu[j])
       if(max(abs(exp(muj) - exp(mui))) < control$eqtol) {
-        cat(sprintf('points %d and %d are equal\n',j,i))
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
         colnames(mumat) <- names(pset$parset)
-        print(cbind(prob=c(p[j],p[i]),mumat))
+        cat(sprintf('%s %s points %d and %d are equal\n',jobname, format(Sys.time(),control$tspec),j,i),'\n')
+        print(cbind(prob=c(p[j],p[i]),exp(mumat)))
         okpt[i] <- FALSE
         p[j] <- p[j]+p[i]
       }
     }
   }
-  if(!all(okpt)) 
-    cat(control$jobname,  format(Sys.time(),control$tspec), 'remove points', sprintf(' %.2e',p[!okpt]),'\n')
-  p <- p[okpt]
 
+  if(!all(okpt)) {
+    control$callback('removepoints',pset,NULL,control,remove=!okpt)
+  }
+
+  p <- p[okpt]
+  p <- p/sum(p)
   pset$pargs <- p2a(p)
   for(i in seq_along(pset$parset)) {
     pset$parset[[i]]$mu <- pset$parset[[i]]$mu[okpt]
   }
-  
   structure(pset,badremoved=!all(okpt))
 }
 
-addpoint <- function(spec,pset,value,control) {
-  # find a new point
-  # optimize probabilities
-  newset <- pset
-  repeat {
-    newset <- newpoint(spec,newset,value,control)
-    newset <- optdist(spec,newset,control)
-    newset <- badpoints(newset,control)
-    if(!isTRUE(attr(newset,'badremoved'))) break
-  } 
-  newset
+# some functions for use in optim
+#negative log likelihood
+LL <- function(args,skel, spec,threads) {
+  pset <- unflatten(args,skel)
+  -cloglik(spec,pset,nthreads=threads)
 }
 
-ml <- function(spec,pset,control) {
+# gradient of negative log likelihood
+gLL <- function(args,skel, spec,threads) {
+  pset <- unflatten(args,skel)
+  -attr(cloglik(spec,pset,dogradient=TRUE,nthreads=threads),'gradient')
+}
+
+# fisher matrix
+fLL <- function(args, skel, spec, threads) {
+  pset <- unflatten(args,skel)
+  -attr(cloglik(spec,pset,dofisher=TRUE,nthreads=threads),'fisher')
+}
+
+# hessian, numerically from gradient, slow
+hLL <- function(args, skel, spec, threads) {
+  numDeriv::jacobian(gLL,args,spec=spec,skel=skel,threads=threads)
+}
+
+
+optfull <- function(spec, pset, control) {
   args <- flatten(pset)
-  skel <- attr(args,'skel')
-  LL <- function(args,spec,skel) {
-    pset <- unflatten(args,skel)
-    -cloglik(spec,pset,nthreads=control$threads)
-  }
-  gLL <- function(args,spec,skel) {
-    pset <- unflatten(args,skel)
-    -attr(cloglik(spec,pset,dogradient=TRUE,nthreads=control$threads),'gradient')
-  }
 
-  fLL <- function(args, spec, skel) {
-    pset <- unflatten(args,skel)
-    -attr(cloglik(spec,pset,dofisher=TRUE,nthreads=control$threads),'fisher')
-  }
-  hLL <- function(args, spec, skel) {
-    numDeriv::jacobian(gLL,args,spec=spec,skel=skel)
-  }
+#  jdLL <- function(args, spec, skel) {
+#    numDeriv::jacobian(dLL,args,spec=spec,skel=skel)
+#  }
+#  dhLL <- function(args, spec, skel) {
+#    numDeriv::hessian(LL,args,spec=spec,skel=skel)
+#  }
 
-  jdLL <- function(args, spec, skel) {
-    numDeriv::jacobian(dLL,args,spec=spec,skel=skel)
-  }
-  dhLL <- function(args, spec, skel) {
-    numDeriv::hessian(LL,args,spec=spec,skel=skel)
-  }
-
-  dLL <- function(args,spec,skel) {
-    numDeriv::grad(LL,args,spec=spec,skel=skel)
-  }
+#  dLL <- function(args,spec,skel) {
+#    numDeriv::grad(LL,args,spec=spec,skel=skel)
+#  }
 
 #  args[16:18] <- rnorm(3)
 #  args[5:7] <- rnorm(3)
@@ -447,10 +473,31 @@ ml <- function(spec,pset,control) {
 #  message('dLL: '); print(system.time(print(dLL(args,spec,skel))))
 #  stop('debug')
 #  dLL <- function(args,spec,skel) numDeriv::grad(LL,args,method='simple',spec=spec,skel=skel)
-  opt <- optim(args,LL,gLL,method=control$method,
-               control=list(trace=0,REPORT=10,maxit=10*length(args),lmm=60,abstol=1e-4,reltol=1e-14),
-               spec=spec,skel=skel)
+  optim(args,LL,gLL,method=control$method,
+        control=list(trace=0,REPORT=10,maxit=10*length(args),lmm=60,abstol=1e-4,reltol=1e-14),
+        skel=attr(args,'skeleton'), threads=control$threads,spec=spec)
+}
+
+addpoint <- function(spec,pset,value,control) {
+  # find a new point
+  # optimize probabilities
+  newset <- pset
+  control$minprob <- 0
+  repeat {
+    newset <- newpoint(spec,newset,value,control)
+    newset <- optdist(spec,newset,control)
+    newset <- badpoints(newset,control)
+    if(!isTRUE(attr(newset,'badremoved'))) break
+    # optimize dist after removing point(s)
+#    newset <- unflatten(optfull(spec,newset,control)$par)
+  } 
+  newset
+}
+
+ml <- function(spec,pset,control) {
+  opt <- optfull(spec,pset,control)
   sol <- unflatten(opt$par)
+  skel <- attr(opt$par,'skeleton')
 
   # reorder the masspoints, highest probability first
   probs <- a2p(sol$pargs)
@@ -462,21 +509,23 @@ ml <- function(spec,pset,control) {
     names(pp$mu) <- nm
     pp
   })
+  opt$value <- -opt$value
   opt$par <- sol
+  p <- a2p(sol$pargs)
+  opt$entropy <- -sum(p*log(p))
 
   # create a covariance matrix, we use the inverse of the (negative) fisher matrix, it's fast to compute
   nm <- names(flatten(opt$par))
-
   if(isTRUE(control$gradient)) {
-    opt$gradient <- gLL(flatten(opt$par),spec,skel)
+    opt$gradient <- gLL(flatten(opt$par),skel,spec,control$threads)
     names(opt$gradient) <- nm
   }
   if(isTRUE(control$fisher)) {
-    opt$fisher <- fLL(flatten(opt$par),spec,skel)
+    opt$fisher <- fLL(flatten(opt$par),skel,spec,control$threads)
     dimnames(opt$fisher) <- list(row=nm,col=nm)
   }
   if(isTRUE(control$hessian)) {
-    opt$hessian <- hLL(flatten(opt$par),spec,skel)
+    opt$hessian <- hLL(flatten(opt$par),skel,spec,control$threads)
     dimnames(opt$hessian) <- list(nm,nm)
   }
 #  opt$vcov <- try(solve(opt$fisher), silent=TRUE)

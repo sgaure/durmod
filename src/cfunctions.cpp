@@ -74,12 +74,8 @@ inline double log1pexp(double x) {
   return x;
 }
 */
-// compute exp(-x)/(1-exp(-x))
-// by logarithms exp(-x - log(1-exp(-x)))
-inline double expfrac(double x,double extra = 0.0) {
-  return exp(-x - log1mexp(x) + extra);
-}
 
+inline double log0(double x) { return (x < 0) ? -DBL_MAX : log(x); }
 
 //      computeloglik(d[i], lh, mup, npoints, llspell)
 inline void obsloglik(const int tr, const Timing timing, const double *lh, double dur,
@@ -202,7 +198,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       if(timing == interval)
 	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) +
 	  expm1(lh[t]+mup[t][j]-logsumhaz);
-
+	//	funnyexpr = exp(lh[t]+mup[t][j])*(dur*exp(-dur*sumhaz)/expm1(-dur*sumhaz) + sumhaz);
       for(int k = 0; k < nvars[t]; k++) {
 	switch(timing) {
 	case exact:
@@ -247,9 +243,10 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
   }
 }
 
-inline void updategradient(int npoints, double *dllspell, double *llspell, double *logprobs, double ll,
-		     int transitions, int npars, int *nvars, int *faclevels, const double *pargs, 
-		     int totalpars, double *spellgrad, double *grad) {
+inline void updategradient(const int npoints, const double *dllspell, const double *llspell, 
+			   const double *logprobs, const double ll,
+			   const int transitions, const int npars, const int *nvars, const int *faclevels, 
+			   const double *pargs, const int totalpars, double *spellgrad, double *grad) {
 
   (void) memset(spellgrad, 0, totalpars*sizeof(*spellgrad));
 
@@ -287,10 +284,11 @@ inline void updategradient(int npoints, double *dllspell, double *llspell, doubl
     
     // The probability-parameters ak occur in all the probabilities
     // compute dPj / dak
-    // The a's are in pargs
-    // let ld = log(1+sum(exp(pargs))), can be moved out
+    // The a's are in pargs, assume a0==0 so that Pk=exp(ak)/sum(exp(aj))
+    // let ld = log(1+sum(exp(pargs))), the log denominator.
+    // Can be moved out of j-loop. We trust the compiler to do that.
     // Stick to logs, 
-    double ld = log1sumx(npoints-1, pargs);
+    const double ld = log1sumx(npoints-1, pargs);
     const double lscale = llspell[j] - ll;
     for(int k = 0; k < npoints-1; k++) {
       const double ak = pargs[k];
@@ -316,7 +314,7 @@ inline void updategradient(int npoints, double *dllspell, double *llspell, doubl
 }
 
 inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *gradblock, 
-			  int *nonzero, double *spellgrad, double *fisher) {
+			  int *nonzero, double *spellgrad, double *fisher, int *memfail) {
   // When computing the fisher matrix, we have individual spell
   // gradients in the gradblock matrix, we should add this
   // spell's gradient as a column.  When the gradblock matrix is
@@ -327,7 +325,6 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
   // we can use a parallel blas. The reason we collect gradients
   // in gradblock is that dsyrk is a lot faster than dsyr (rank
   // 1 update).
-
 
   if(*gradfill == fishblock) {
     // dsyrk the gradblock into fisher
@@ -346,7 +343,9 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
     if(4*nnrank < 3*totalpars) {
       // Less than some limit, we dsyrk a smaller one
       
-      double *smallblock = new double[fishblock*nnrank];
+      double *smallblock = new (std::nothrow) double[fishblock*nnrank];
+      if(smallblock == nullptr) {(*memfail)++; return;}
+
       for(int b = 0; b < fishblock; b++) {
 	for(int k = 0; k < nnrank; k++) {
 	  smallblock[b*nnrank + k] = gradblock[b*totalpars + nonzero[k]];
@@ -355,7 +354,8 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
       // dsyrk it into smallfish
       const double alpha=-1, beta=0;
       
-      double *smallfish = new double[nnrank*nnrank];
+      double *smallfish = new (std::nothrow) double[nnrank*nnrank];
+      if(smallfish == nullptr) {(*memfail)++; delete [] smallblock; return;}
       F77_CALL(dsyrk)("U","N",&nnrank,&fishblock,&alpha,smallblock,&nnrank,&beta,
 		      smallfish, &nnrank);
       delete [] smallblock;
@@ -393,8 +393,8 @@ NumericVector cloglik(List spec, List pset,
   List parset = as<List>(pset["parset"]);
   const double *pargs = REAL(as<NumericVector>(pset["pargs"]));
   const int npoints = 1 + as<NumericVector>(pset["pargs"]).size();
-  double *logprobs = new double[npoints];
-
+  double *logprobs = new  double[npoints];
+  
   a2logp(npoints-1,pargs,logprobs);
   const int N = d.size();
   const int transitions = parset.size();
@@ -403,7 +403,8 @@ NumericVector cloglik(List spec, List pset,
   const int nrisks = risklist.size();
   IntegerVector state = as<IntegerVector>(spec.attr("state"));
 
-  bool *riskmasks = new bool[nrisks*transitions]();
+  bool *riskmasks = new  bool[nrisks*transitions]();
+  
   for(int i = 0; i < nrisks; i++) {
     IntegerVector v = as<IntegerVector>(risklist[i]);
     for(int t = 0; t < v.size(); t++) {
@@ -413,15 +414,17 @@ NumericVector cloglik(List spec, List pset,
   
   // pointers into the data
 
-  double **matp = new double*[transitions];
-
-  int *nvars = new int[transitions];
-
+  double **matp = new  double*[transitions];
+  
+  int *nvars = new  int[transitions];
+  
   // number of factors in each transition
 
-  int *nfacs = new int[transitions];
+  int *nfacs = new  int[transitions];
+
   // pointers to factor lists
-  FACTOR **factors = new FACTOR*[transitions];
+  FACTOR **factors = new  FACTOR*[transitions];
+  
   for(int i = 0; i < transitions; i++) {
     NumericMatrix smat = as<NumericMatrix>(as<List>(spec[i])["mat"]);
     matp[i] = REAL(smat);
@@ -431,7 +434,8 @@ NumericVector cloglik(List spec, List pset,
     nfacs[i] = facs.size();
     //    printf("nfacs[%d] = %ld\n",i,nfacs[i]);
     if(nfacs[i] == 0) continue;
-    factors[i] = new FACTOR[nfacs[i]];
+    factors[i] = new  FACTOR[nfacs[i]];
+
     for(int j = 0; j < nfacs[i]; j++) {
       IntegerVector fac = as<IntegerVector>(facs[j]);
       factors[i][j].val = INTEGER(fac);
@@ -449,9 +453,8 @@ NumericVector cloglik(List spec, List pset,
 
   // pointers into the parameters
 
-  double **betap = new double*[transitions];
-  double **mup = new double*[transitions];
-
+  double **betap = new  double*[transitions];
+  double **mup = new  double*[transitions];
 
   FACTORPAR **facpars = new FACTORPAR*[transitions];
   int *faclevels = new int[transitions];
@@ -522,8 +525,10 @@ NumericVector cloglik(List spec, List pset,
 
   // Remember not to use any R-functions (or allocate Rcpp storage) inside the parallel region.
 
+  int memfail = 0;
 #pragma omp parallel for reduction(+:grad[:gradsize], LL) num_threads(nthreads) schedule(guided)
   for(int spellno = 0; spellno < nspells; spellno++) {
+    if(memfail > 0) continue;
     memset(llspell, 0, npoints*sizeof(*llspell));
     if(dograd) memset(dllspell, 0, npoints*npars*sizeof(*dllspell));
     for(int i = spellidx[spellno]; i < spellidx[spellno+1]; i++) {
@@ -562,7 +567,7 @@ NumericVector cloglik(List spec, List pset,
     double ll;
     if(gdiff) {
       ll = logsumofexp(npoints-1,llspell,logprobs);
-      LL += exp(llspell[npoints-1] - ll);
+      LL += exp(llspell[npoints-1] - ll) - 1.0;
     } else {
       // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
@@ -572,12 +577,12 @@ NumericVector cloglik(List spec, List pset,
       if(dograd) {
 	// compute the spell gradient, update the gradient
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
-		 transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad, grad);
+		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad, grad);
 	if(dofisher) {
 	  // update the fisher matrix from the spellgrad
 	  // we use a global fisher matrix, no omp reduction, so do it in a critical section
 #pragma omp critical
-	  updatefisher(&gradfill, fishblock, totalpars, gradblock, nonzero, spellgrad, fisher);
+	  updatefisher(&gradfill, fishblock, totalpars, gradblock, nonzero, spellgrad, fisher, &memfail);
 	}
       }
     } 
@@ -621,6 +626,7 @@ NumericVector cloglik(List spec, List pset,
   delete [] facpars;
   delete [] faclevels;
 
+  if(memfail > 0) {if(dograd) delete [] grad; stop("Memory allocation failed");}
   // Then set up the return value
   NumericVector ret = NumericVector::create(LL);
   if(dograd) {
