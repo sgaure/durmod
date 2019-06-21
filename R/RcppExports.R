@@ -5,7 +5,7 @@ cdebug <- function(dodebug) {
     invisible(.Call(`_durmod_cdebug`, dodebug))
 }
 
-cloglik <- function(spec, pset, gdiff = FALSE, dogradient = FALSE, dofisher = FALSE, nthreads = 1L) {
-    .Call(`_durmod_cloglik`, spec, pset, gdiff, dogradient, dofisher, nthreads)
+cloglik <- function(dataset, pset, control, gdiff = FALSE, dogradient = FALSE, dofisher = FALSE) {
+    .Call(`_durmod_cloglik`, dataset, pset, control, gdiff, dogradient, dofisher)
 }
 

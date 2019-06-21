@@ -6,7 +6,7 @@
 \usage{
 mphcrm(formula, data, id, durvar, state, risksets = NULL,
   timing = c("exact", "interval", "logit"), subset, na.action,
-  control = mphcrm.control())
+  control = mphcrm.control(), cluster = NULL)
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.
@@ -43,9 +43,14 @@ the observation.}
 \item{na.action}{For handling of missing cases, similar to \code{\link{lm}}.}
 
 \item{control}{List of control parameters for the estimation. See \code{\link{mphcrm.control}}.}
+
+\item{cluster}{A cluster specification from package \pkg{parallel} or \pkg{snow}. There is quite some
+overhead in running on a cluster, primarily intended for very large datasets. If you have
+more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=n)} instead.}
 }
 \value{
-[TBS]
+A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be
+interested in the first entry.
 }
 \description{
 \code{mphcrm} implements estimation of a mixed proportional hazard competing risk model.
@@ -80,5 +85,19 @@ The estimation starts out with one masspoint, maximizes the likelihood, tries to
 point, and continues in this fashion.
 }
 \details{
-[TBS]
+The estimation starts by estimating the null-model, i.e. all parameters set to 0, only one
+intercept for each transition is estimated.
+
+Then it estimates the full model, still with one intercept in each transition.
+
+After the initial model has been estimated, it tries to add a masspoint to the mixing
+distribution, then estimates the model with this new distribution.
+
+It continues to add masspoints in this way until eithr it can not improve the likelihood, or
+the number of iterations as specified in control$iters are reached.
+
+The result of every iteration is returned in a list.
+
+If you interrupt \code{mphcrm} it will catch the interrupt and return with the
+estimates it has found so far.
 }

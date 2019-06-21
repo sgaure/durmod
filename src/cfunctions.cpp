@@ -246,7 +246,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 inline void updategradient(const int npoints, const double *dllspell, const double *llspell, 
 			   const double *logprobs, const double ll,
 			   const int transitions, const int npars, const int *nvars, const int *faclevels, 
-			   const double *pargs, const int totalpars, double *spellgrad, double *grad) {
+			   const double *pargs, const int totalpars, double *spellgrad) {
 
   (void) memset(spellgrad, 0, totalpars*sizeof(*spellgrad));
 
@@ -308,9 +308,6 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
       spellgrad[npars+k] += dPdak; 
     }
   }
-  // update global gradient with spell gradient
-  for(int k = 0; k < totalpars; k++) grad[k] += spellgrad[k];
-
 }
 
 inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *gradblock, 
@@ -379,16 +376,17 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
 }
 
 // [[Rcpp::export]]
-NumericVector cloglik(List spec, List pset, 
-		      const bool gdiff=false, const bool dogradient=false, const bool dofisher=false,
-		      const int nthreads=1) {
-  const IntegerVector d = as<IntegerVector>(spec.attr("d"));
-  const IntegerVector id = as<IntegerVector>(spec.attr("id"));
-  const NumericVector duration = as<NumericVector>(spec.attr("duration"));
-  const NumericVector spellidx = as<NumericVector>(spec.attr("spellidx"));
-  const CharacterVector ctiming = as<CharacterVector>(spec.attr("timing"));
+NumericVector cloglik(List dataset, List pset, List control,
+		      const bool gdiff=false, const bool dogradient=false, 
+		      const bool dofisher=false) {
+  const IntegerVector d = as<IntegerVector>(dataset["d"]);
+  const IntegerVector id = as<IntegerVector>(dataset["id"]);
+  const NumericVector duration = as<NumericVector>(dataset["duration"]);
+  const NumericVector spellidx = as<NumericVector>(dataset["spellidx"]);
+  const CharacterVector ctiming = as<CharacterVector>(dataset["timing"]);
   const Timing timing = (ctiming[0] == "exact") ? exact : (ctiming[0] == "interval" ? interval : logit);
 
+  const int nthreads=as<IntegerVector>(control["threads"])[0];
   const int nspells = spellidx.size() - 1;
   List parset = as<List>(pset["parset"]);
   const double *pargs = REAL(as<NumericVector>(pset["pargs"]));
@@ -399,9 +397,9 @@ NumericVector cloglik(List spec, List pset,
   const int N = d.size();
   const int transitions = parset.size();
 
-  List risklist = as<List>(spec.attr("riskset"));
+  List risklist = as<List>(dataset["riskset"]);
   const int nrisks = risklist.size();
-  IntegerVector state = as<IntegerVector>(spec.attr("state"));
+  IntegerVector state = as<IntegerVector>(dataset["state"]);
 
   bool *riskmasks = new  bool[nrisks*transitions]();
   
@@ -424,13 +422,13 @@ NumericVector cloglik(List spec, List pset,
 
   // pointers to factor lists
   FACTOR **factors = new  FACTOR*[transitions];
-  
+  List data = as<List>(dataset["data"]);
   for(int i = 0; i < transitions; i++) {
-    NumericMatrix smat = as<NumericMatrix>(as<List>(spec[i])["mat"]);
+    NumericMatrix smat = as<NumericMatrix>(as<List>(data[i])["mat"]);
     matp[i] = REAL(smat);
     nvars[i] = smat.nrow();
 
-    List facs = as<List>(spec[i])["faclist"];
+    List facs = as<List>(data[i])["faclist"];
     nfacs[i] = facs.size();
     //    printf("nfacs[%d] = %ld\n",i,nfacs[i]);
     if(nfacs[i] == 0) continue;
@@ -567,7 +565,7 @@ NumericVector cloglik(List spec, List pset,
     double ll;
     if(gdiff) {
       ll = logsumofexp(npoints-1,llspell,logprobs);
-      LL += exp(llspell[npoints-1] - ll) - 1.0;
+      LL += expm1(llspell[npoints-1] - ll);
     } else {
       // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
@@ -577,7 +575,10 @@ NumericVector cloglik(List spec, List pset,
       if(dograd) {
 	// compute the spell gradient, update the gradient
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
-		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad, grad);
+		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad);
+	// update global gradient with spell gradient
+	for(int k = 0; k < totalpars; k++) grad[k] += spellgrad[k];
+
 	if(dofisher) {
 	  // update the fisher matrix from the spellgrad
 	  // we use a global fisher matrix, no omp reduction, so do it in a critical section

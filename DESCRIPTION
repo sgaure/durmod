@@ -9,6 +9,7 @@ Description: Estimation of mixed proportional hazard competing risk model.
 License: Artistic-2.0
 Imports: Rcpp (>= 1.0.1), stats, utils
 Depends: Formula, numDeriv, nloptr, parallel
+Suggests: snow
 LinkingTo: Rcpp
 Encoding: UTF-8
 RoxygenNote: 6.1.1

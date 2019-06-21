@@ -4,8 +4,34 @@
 \alias{mphcrm.callback}
 \title{Default callback function for mphcrm}
 \usage{
-mphcrm.callback(fromwhere, opt, spec, control, ...)
+mphcrm.callback(fromwhere, opt, dataset, control, ...)
+}
+\arguments{
+\item{fromwhere}{a string which identifies which step in the algorithm it is called from. \code{fromwhere=='full'} means
+that it is a full estimation of all the parameters. There are also other codes, when adding a point,
+when removing duplicate points. When some optimization is completed it is called with the
+return status from \code{\link{optim}} (and in some occasions from \code{\link{nloptr::nloptr}}.}
+
+\item{opt}{Typically the result of a call to \code{\link{optim}}.}
+
+\item{dataset}{The dataset in a structured form.}
+
+\item{control}{The \code{control} argument given to \code{\link{mphcrm}}}
+
+\item{...}{other arguments}
 }
 \description{
-Default callback function for mphcrm
+The default callback function prints a line whenever estimation with a masspoint is
+completed.
+}
+\details{
+If you write your own callback function it will replace the default function, but you can
+of course call the default callback from your own callback function, and in addition print your
+own diagnostics, or save the intermediate \code{opt} in a file, or whatever.
+}
+\note{
+Beware that
+\code{control} contains a reference to the callback function, which may contain a reference
+to the top-level environment, which may contain the full dataset. So if you save \code{control}
+you may end up saving the entire dataset.
 }
