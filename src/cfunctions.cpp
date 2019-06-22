@@ -508,14 +508,16 @@ NumericVector cloglik(List dataset, List pset, List control,
   // must be static to allocate thread private
   // we could do array reduction on the gradient, but it's not supported in
   // the current C-compiler for windows on cran. So do it manually.
-  static double *lh, *totgrad;
+  static double *lh, *totgrad, *gkahanc;
   static double *spellgrad, *llspell, *dllspell; 
   int *nonzero; // only used temporarily in critical section, so not thread local
   if(dofisher) nonzero = (int*) R_alloc(totalpars, sizeof(int)); 
 
-#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad)
+#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad, gkahanc)
 #pragma omp parallel num_threads(nthreads)
   {  
+    // Can't do R_alloc in threads
+    if(dograd) gkahanc = new double[gradsize]();
     totgrad = new double[gradsize]();
     llspell = new double[npoints];
     lh = new double[transitions];
@@ -526,9 +528,9 @@ NumericVector cloglik(List dataset, List pset, List control,
   }
 
   // Remember not to use any R-functions (or allocate Rcpp storage) inside the parallel region.
-
+  double kahanc = 0.0;
   int memfail = 0;
-#pragma omp parallel for reduction(+: LL) num_threads(nthreads) schedule(guided)
+#pragma omp parallel for reduction(+: LL) num_threads(nthreads) schedule(guided) firstprivate(kahanc)
   for(int spellno = 0; spellno < nspells; spellno++) {
     if(memfail > 0) continue;
     memset(llspell, 0, npoints*sizeof(*llspell));
@@ -572,16 +574,30 @@ NumericVector cloglik(List dataset, List pset, List control,
     } else {
       // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
-      // for very long spell we should perhaps do a compensated addition, Kahan or Neumaier?
-      LL += ll;
+      // for many spells we should perhaps do a compensated addition, Kahan/Neumaier?
+
+      //      LL += ll;
+      const double y = ll - kahanc;
+      const double t = LL + y;
+      kahanc = (t-LL) - y;
+      LL = t;
+
+      
       
       if(dograd) {
 	// compute the spell gradient, update the gradient
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
 		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad);
 	// update global gradient with spell gradient
-	for(int k = 0; k < totalpars; k++) totgrad[k] += spellgrad[k];
+	for(int k = 0; k < totalpars; k++) {
+	  //	  totgrad[k] += spellgrad[k];
 
+	  const double t = totgrad[k] + spellgrad[k];
+	  gkahanc[k] += (abs(totgrad[k]) >= abs(spellgrad[k])) ? 
+	    (totgrad[k]-t)+spellgrad[k] : (spellgrad[k] - t) + totgrad[k];
+	  totgrad[k] = t;
+
+	}
 	if(dofisher) {
 	  // update the fisher matrix from the spellgrad
 	  // we use a global fisher matrix, no omp reduction, so do it in a critical section
@@ -604,7 +620,7 @@ NumericVector cloglik(List dataset, List pset, List control,
     }
   }
 
-  if(memfail > 0) {delete [] totgrad; stop("Memory allocation failed");}
+  if(memfail > 0) {delete [] totgrad; delete [] gkahanc; stop("Memory allocation failed");}
 
   // Then set up the return value
   NumericVector ret = NumericVector::create(LL);
@@ -616,9 +632,9 @@ NumericVector cloglik(List dataset, List pset, List control,
 #pragma omp parallel num_threads(nthreads) 
     {
 #pragma omp critical
-      for(int k = 0; k < gradsize; k++) grad[k] += totgrad[k];
+      for(int k = 0; k < gradsize; k++) grad[k] += totgrad[k] + gkahanc[k];
     }
-    if(dograd) delete [] totgrad;
+    if(dograd) {delete [] totgrad; delete [] gkahanc;}
     ret.attr("gradient") = retgrad;
   }
 
@@ -653,9 +669,9 @@ List genspell(double x1,double x2, double ve, double vp, double censor) {
   double cumtime = 0;
   while(!done) {
     alpha = newalpha;
-    double te = -log(drand48())*exp(-(x1-x2+ve+0.2*alpha));
-    double tp = onp ? 1e200 : -log(drand48())*exp(-(x1+0.5*x2+vp));
-    double tc = -log(drand48())*70.0;
+    double te = -log(R::runif(0,1))*exp(-(x1-x2+ve+0.2*alpha));
+    double tp = onp ? 1e200 : -log(R::runif(0,1))*exp(-(x1+0.5*x2+vp));
+    double tc = -log(R::runif(0,1))*70.0;
     if(tc < te && tc < tp) {
       x1 = x1 + R::rnorm(0,1);
       x2 = x2 + R::rnorm(0,1);
