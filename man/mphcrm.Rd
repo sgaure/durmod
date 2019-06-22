@@ -5,7 +5,7 @@
 \title{Estimate a mixed proportional hazard model}
 \usage{
 mphcrm(formula, data, id, durvar, state, risksets = NULL,
-  timing = c("exact", "interval", "logit"), subset, na.action,
+  timing = c("exact", "interval", "none"), subset, na.action,
   control = mphcrm.control(), cluster = NULL)
 }
 \arguments{
@@ -20,23 +20,30 @@ The \code{x1+x2} part is like in \code{\link{lm}}, i.e. ordinary covariates or f
 
 If the covariates differ among the transitions, a multi-part formula can be specified.
 E.g. \code{d ~ x1+x2 | x3+x4 | x5+x6}, in which case the first part (\code{x1+x2}) is common
-for all the transitions, the second part, \code{x3+x4}, is specific to the first transition,
+for all the transitions, the second part, \code{x3+x4}, is specific for the first transition,
 the third part is specific for the second transition, and so on. I.e. the covariates
 for transition 1 are \code{x1+x2+x3+x4}, whereas the covariates for transition 2 are \code{x1+x2+x5+x6}.}
 
 \item{data}{A data frame which contains the covariates.}
 
-\item{id}{The name of the covariate which identifies an individual.}
+\item{id}{The covariate which identifies an individual}
 
-\item{durvar}{The name of the covariate which contains the length of the observation period. Can be a
+\item{durvar}{The covariate which contains the length of the observation period. Can be a
 numeric, in which case all observations are assumed to have the same length. If missing, it
 is assumed to be 1.}
 
-\item{state}{The name of a variable which is an index into \code{risksets}, specifying for each observation
+\item{state}{A covariate which is an index into \code{risksets}, specifying for each observation
 which risks are present.}
 
 \item{risksets}{A list of integer vectors. Each vector is a list of transitions, which risks are present for
 the observation.}
+
+\item{timing}{character. The timing in the duration model. Can be one of
+\itemize{
+\item "exact" The timing is exact, the transition occured at the end of the observation interval
+\item "interval" The transition occured some time during the observation interval
+\item "none" There is no timing, the transition occured, or not. A logit model is used.
+}}
 
 \item{subset}{For specifying a subset of the dataset, similar to \code{\link{lm}}.}
 
@@ -44,9 +51,12 @@ the observation.}
 
 \item{control}{List of control parameters for the estimation. See \code{\link{mphcrm.control}}.}
 
-\item{cluster}{A cluster specification from package \pkg{parallel} or \pkg{snow}. There is quite some
-overhead in running on a cluster, primarily intended for very large datasets. If you have
-more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=n)} instead.}
+\item{cluster}{A cluster specification from package \pkg{parallel} or \pkg{snow}. There is some
+overhead in running on a cluster, so it is primarily intended for very large datasets. If you have
+more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=n)} instead.
+
+When using a cluster, the \code{control[['threads']]} parameter is the number of threads on each node.
+Make sure you don't run too many threads on each node, that will slow things down dramatically.}
 }
 \value{
 A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be
@@ -55,9 +65,9 @@ interested in the first entry.
 \description{
 \code{mphcrm} implements estimation of a mixed proportional hazard competing risk model.
 The baseline hazard is of the form \eqn{exp(X \beta)} where \eqn{X} is a
-matrix of covariates, and \eqn{\beta} is a vector of paramaters to estimate.
+matrix of covariates, and \eqn{\beta} is a vector of parameters to estimate.
 In addition there is an intercept term \eqn{\mu}, i.e. the hazard is \eqn{exp(X \beta + \mu)}.
-There are several transitions to be made, and a set of (\eqn{X}, \eqn{\beta}, and \eqn{\mu}) for
+There are several transitions to be made, and a set of \eqn{X}, \eqn{\beta}, and \eqn{\mu} for
 each possible transition.
 
 Each individual may have several observations, with either a transition at the end of the
@@ -66,7 +76,7 @@ transition for an observation, but only one is taken at the end of the period.
 
 For each individual \eqn{i} there is a log likelihood as a function of \eqn{\mu}, called \eqn{M_i(\mu)}.
 
-The mixture is that the \eqn{\mu}'s are stochastic. I.e. 
+The mixture part is that the \eqn{\mu}'s are stochastic. I.e. 
 we have probabilities \eqn{p_j}, and a vector of \eqn{\mu_j} of masspoints (one for each transition),
 for each such \eqn{j}.
 
@@ -75,7 +85,7 @@ So the full likelihood for an individual is \eqn{L_i = \sum_j p_j M_i(\mu_j)}.
 The \code{mphcrm()} function maximizes the likelihood \eqn{\sum_i L_i} over
 \eqn{p_j}, \eqn{mu_j}, and \eqn{\beta}.
 
-In addition to the parameters \eqn{\beta}, a variable which records the duration of each
+In addition to the covariates specified by a formula, a variable which records the duration of each
 observation must be specified.
 
 In some datasets it is known that not all risks are present at all times. Like, losing your

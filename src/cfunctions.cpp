@@ -9,7 +9,7 @@
 // [[Rcpp::plugins(openmp)]]
 using namespace Rcpp;
 
-enum Timing {exact, interval, logit};
+enum Timing {exact, interval, none};
 
 typedef struct {
   int *val;
@@ -96,7 +96,7 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
     case interval:
       llspell[j] -= dur*exp(logsumhaz);
       break;
-    case logit:
+    case none:
       llspell[j] -= logsumhaz;
       break;
     }
@@ -105,7 +105,7 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
       case interval:
 	llspell[j] += log1mexp(dur*exp(logsumhaz)) - logsumhaz;
       case exact:
-      case logit:
+      case none:
 	llspell[j] += lh[tr-1] + mup[tr-1][j];
 	break;
       }
@@ -130,7 +130,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
   for(int j = 0; j < npoints; j++) {
     double sumhaz = 0;
     double logsumhaz = -DBL_MAX;
-    if(timing == logit || (timing == interval && t >= 0)) {
+    if(timing == none || (timing == interval && t >= 0)) {
       for(int tt = 0; tt < transitions; tt++) {
 	if(riskmask && !riskmask[tt]) continue;
 	logsumhaz = R::logspace_add(logsumhaz, lh[tt] + mup[tt][j]);
@@ -151,7 +151,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	case interval:
 	  dll[pos++] -= dur*haz*mat[k];
 	  break;
-	case logit:
+	case none:
 	  dll[pos++] -= haz*mat[k]/sumhaz;
 	  break;
 	}
@@ -167,7 +167,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	case interval:
 	  dll[pos + fval-1] -= dur*haz*f;
 	  break;
-	case logit:
+	case none:
 	  dll[pos + fval-1] -= haz*f/sumhaz;
 	  break;
 	}
@@ -180,7 +180,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       case interval:
 	dll[pos+j] -= dur*haz;
 	break;
-      case logit:
+      case none:
 	dll[pos+j] -= haz/sumhaz;
 	break;
       }
@@ -202,7 +202,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       for(int k = 0; k < nvars[t]; k++) {
 	switch(timing) {
 	case exact:
-	case logit:
+	case none:
 	  dll[pos++] += tmat[k];
 	  break;
 	case interval:
@@ -219,7 +219,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	double f = (x != 0) ? x[obs] : 1.0;
 	switch(timing) {
 	case exact:
-	case logit:
+	case none:
 	  dll[pos + fval-1] += f;
 	  break;
 	case interval:
@@ -232,7 +232,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       // and for the mus
       switch(timing) {
       case exact:
-      case logit:
+      case none:
 	dll[pos+j] += 1;
 	break;
       case interval:
@@ -384,7 +384,7 @@ NumericVector cloglik(List dataset, List pset, List control,
   const NumericVector duration = as<NumericVector>(dataset["duration"]);
   const NumericVector spellidx = as<NumericVector>(dataset["spellidx"]);
   const CharacterVector ctiming = as<CharacterVector>(dataset["timing"]);
-  const Timing timing = (ctiming[0] == "exact") ? exact : (ctiming[0] == "interval" ? interval : logit);
+  const Timing timing = (ctiming[0] == "exact") ? exact : (ctiming[0] == "interval" ? interval : none);
 
   const int nthreads=as<IntegerVector>(control["threads"])[0];
   const int nspells = spellidx.size() - 1;

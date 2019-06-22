@@ -9,6 +9,8 @@ se(x, tol = 1e-09)
 \arguments{
 \item{x}{The Fisher matrix, typically from \code{opt[[1]]$fisher}, where \code{opt} is returned
 from \code{\link{mphcrm}}.}
+
+\item{tol}{tolerance for \link{geninv}}
 }
 \description{
 Extract standard errors of the estimated parameters

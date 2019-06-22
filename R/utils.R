@@ -1,8 +1,9 @@
 #'
 
-##' Moore-Penrose generalized inverse
-##' 
-##' @export
+#' Moore-Penrose generalized inverse
+#'
+#' @param X matrix
+#' @param tol tolerance for determining bad entries
 geninv <- function(X, tol=sqrt(.Machine$double.eps)) {
   if (length(dim(X)) > 2L || !is.numeric(X)) 
     stop("'X' must be a numeric matrix")
@@ -25,10 +26,6 @@ geninv <- function(X, tol=sqrt(.Machine$double.eps)) {
 
 nazero <- function(x) ifelse(is.na(x),0,x)
 
-# cbind(val=flatten(dd$par), sd=sqrt(diag(safeinv(dd$fisher))))
-
-# create a matrix(t1mus, t2mus,... probs)
-
 
 #' Extract the mixed proportional hazard distribution
 #'
@@ -37,15 +34,12 @@ nazero <- function(x) ifelse(is.na(x),0,x)
 #' @param pset
 #' a parameter set of class \code{"mphcrm.pset"}, typically
 #' \code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.
-#' @param round
-#' integer. Number of decimals. In a competing risk model, some of the hazards can be very small, \code{mphdist}
-#' can round the value so that e.q. \code{1e-8} becomes zero, mostly useful for nice displays.
 #' @return
 #' matrix where there is one row for each masspoint. The first consists of the probabilities,
 #' the other columns are the hazards for each transition.
 #' @export
-mphdist <- function(pset,round=20) {
-  mus <- round(exp(sapply(pset$parset, function(pp) pp$mu)),round)
+mphdist <- function(pset) {
+  mus <- exp(sapply(pset$parset, function(pp) pp$mu))
   if(is.null(colnames(mus))) {
     mus <- t(mus)
     colnames(mus) <- names(pset$parset)
@@ -55,8 +49,9 @@ mphdist <- function(pset,round=20) {
   cbind(prob,mus)
 }
 
+#' Extract the mixed proportional log hazard distribution
+#' @description Same as \code{mphdist}, but the logarithms of the hazards.
 #' @rdname mphdist
-#' Same as \code{mphdist}, but the logarithms of the hazards.
 #' @export
 mphdist.log <- function(pset) {
   mus <- sapply(pset$parset, function(pp) pp$mu)
@@ -70,17 +65,20 @@ mphdist.log <- function(pset) {
 }
 
 #' Extract moments of the mixed proportional hazard distribution
-#' @seealso @mphdist
+#' @description Extract moments of the distribution
+#' @rdname mphdist
 #' @export
-mphmoments <- function(pset,round=20) {
-  dist <- mphdist(pset,round)
+mphmoments <- function(pset) {
+  dist <- mphdist(pset)
   mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
   variance <- rowSums(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2))
   sd <- sqrt(variance)
   cbind(mean,variance,sd)
 }
 
-#' @rdname mphmoments
+#' Extract moments of the mixed proportional log hazard distribution
+#' @description Same as \code{mphmoments}, but for log hazards
+#' @rdname mphdist
 #' @export
 mphmoments.log <- function(pset) {
   dist <- mphdist.log(pset)
@@ -95,7 +93,7 @@ mphmoments.log <- function(pset) {
 #' @param x
 #' The Fisher matrix, typically from \code{opt[[1]]$fisher}, where \code{opt} is returned
 #' from \code{\link{mphcrm}}.
-#' @export
+#' @param tol tolerance for \link{geninv}
 se <- function(x,tol=1e-9) {
   if(is.matrix(x)) return(sqrt(diag(geninv(x))))
   if(!is.null(x$fisher)) return(sqrt(diag(geninv(x$fisher))))

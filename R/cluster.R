@@ -4,7 +4,7 @@ prepcluster <- function(cluster,dset,control) {
   # of observations each
   # make it temporarily 1-based, easier in R
   spellidx <- dset$spellidx+1
-  K <- length(clusterCall(cluster, function() 1))
+  K <- length(parallel::clusterCall(cluster, function() 1))
 #  K <- 7
   # we should find a set of spells so that dset is evenly divided
   N <- spellidx[length(spellidx)]
@@ -55,13 +55,14 @@ prepcluster <- function(cluster,dset,control) {
     dsplit[[i]]$spellidx = spellidx[starts[i]:ends[i]] - spellidx[starts[i]]
   }
   # push the different datasets to the global environments on the cluster nodes
-  clusterEvalQ(cluster, library(durmod))
-  clusterApply(cluster,dsplit,function(dset) {assign('.durmod.dataset', dset, .GlobalEnv); NULL})
+  parallel::clusterEvalQ(cluster, library(durmod))
+  parallel::clusterApply(cluster,dsplit,function(dset) {assign('dset', dset, 
+                                                               environment(durmod::.cloglik)); NULL})
   assign('cluster',cluster,environment(mphloglik))
 }
 
 cleancluster <- function(cluster) {
-  clusterEvalQ(cluster, {assign('.durmod.dataset',NULL,.GlobalEnv); gc()})
+  parallel::clusterEvalQ(cluster, {assign('dset',NULL,environment(durmod::.cloglik)); gc()})
   assign('cluster',NULL,environment(mphloglik))
 }
 
@@ -78,9 +79,10 @@ mphloglik <- local({
     mc[[2L]] <- NULL  
     # get the other args
     args <- eval.parent(mc)
+    args[['control']] <- args[['control']][c('threads')]
     # put back dataset
-    mc <- as.call(c(list(quote(durmod:::cloglik)),quote(.durmod.dataset), args))
-    ret <- clusterCall(cluster, eval, mc)
+    mc <- as.call(c(list(quote(durmod::.cloglik)),quote(dset), args))
+    ret <- parallel::clusterCall(cluster, eval, mc)
     # collect results
     result <- Reduce('+',ret)
     # any gradient or fisher, collect them as well
@@ -89,5 +91,18 @@ mphloglik <- local({
       attr(result,at) <- Reduce('+',lapply(ret,function(r) attr(r,at)))
     }
     result
+  }
+})
+
+#' Internal function
+#' @param ... arguments
+#' @export
+.cloglik <- local({
+  dset <- NULL
+  function(...) {
+    mc <- match.call()
+    mc[[1L]] <- cloglik
+    mc[[2L]] <- dset
+    eval.parent(mc)
   }
 })

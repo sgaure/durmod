@@ -23,6 +23,8 @@ coef.mphcrm.pset <- function(object, ...) {
 #' @param x
 #' parameter set as typically found in \code{opt[[1]]\$par}, where \code{opt} is
 #' returned from \code{mphcrm}.
+#' @param exclude
+#' For internal use
 #' @export
 flatten <- function(x, exclude=attr(x,'exclude')) {
   class(x) <- setdiff(class(x),'mphcrm.pset')
@@ -53,21 +55,18 @@ flatten <- function(x, exclude=attr(x,'exclude')) {
 # each element is of class mphcrm.opt
 # The mphcrm.opt contains a par-element of class mphcrm.pset
 #
-# There is a simple print for the mphcrm.list
 
-# There is a summary for the mphcrm.opt yielding a mphcrm.summary.opt
-# The mphcrm.summary.opt must have a print method
-#
 
 #' @method print mphcrm.list
 #' @export
-print.mphcrm.list <- function(opt,...) {
-  for(i in seq_along(opt)) {
-    oo <- opt[[i]]
+print.mphcrm.list <- function(x,...) {
+  for(i in seq_along(x)) {
+    oo <- x[[i]]
     N <- length(oo$par$pargs)+1
     ll <- oo$value
-    nm <- names(opt)[i]
+    nm <- names(x)[i]
     cat(sprintf('%s: estimate with %d points, log-likelihood: %.4f\n', nm, N,ll))
+    if(i == 1) {cat('\n');print(oo[[1]]); cat('\n')}
   }
 }
 
@@ -83,18 +82,17 @@ print.mphcrm.opt <- function(x,...) {
 #' @method summary mphcrm.opt
 #' @export
 summary.mphcrm.opt <- function(object, ...) {
-  structure(list(ll=object$value, par=flatten(object$par), 
-                 se=sqrt(diag(geninv(object$fisher)))), class='mphcrm.opt.summary')
-}
-
-#' @method print mphcrm.opt.summary
-#' @export
-print.mphcrm.opt.summary <- function(object,...) {
-  cat(sprintf('Estimates with log-likelihood %.4f\n',object$ll))
-  dist <- grep('(\\.mu|pargs)[0-9]+$',names(object$par))
-  print(cbind(value=object$par[-dist], se=object$se[-dist], t=object$par[-dist]/object$se[-dist]))
-  cat('\nProportional hazard moments\n')
-  print(mphmoments(unflatten(object$par),8))
+  val <- flatten(object$par)
+  dist <- grep('(\\.mu|pargs)[0-9]+$',names(val))
+  se <- if(!is.null(object$fisher)) se(object)[-dist] else NA
+  tval <- val[-dist]/se
+  rdf <- object$nobs
+  list(loglik=object$value,
+       coefs=cbind(value=val[-dist], 
+                   se=se,
+                   t=tval,
+                   `Pr(>|t|)`=2*pt(abs(tval), rdf,lower.tail=FALSE)),
+       moments=mphmoments(object$par))
 }
 
 #' @method summary mphcrm.pset
@@ -102,18 +100,8 @@ print.mphcrm.opt.summary <- function(object,...) {
 summary.mphcrm.pset <- function(object,...) {
   val <- flatten(object)
   dist <- grep('(\\.mu|pargs)[0-9]+$',names(val))
-  structure(list(pars = val[-dist], 
-                 moments=mphmoments(object$par)), 
-            class='mphcrm.pset.summary')
-}
-
-#' @method print mphcrm.pset.summary
-#' @export
-print.mphcrm.pset.summary <- function(x) {
-  cat('Parameters')
-  print(x$pars)
-  cat('Mixed proportional hazard moments')
-  print(moments)
+  list(value = val[-dist], 
+       moments=mphdist(object))
 }
 
 #' @method print mphcrm.pset
@@ -122,13 +110,15 @@ print.mphcrm.pset <- function(x, ...) {
   val <- flatten(x)
   dist <- grep('(\\.mu|pargs)[0-9]+$',names(val))
   print(val[-dist])
-  cat('\nProportional hazard moments\n')
-  print(mphmoments(x,8))
+  cat('\nProportional hazard distribution\n')
+  print(round(mphdist(x),8))
 }
 
 #' @rdname flatten
 #' @param flesh
 #' vector of class \code{"relistable"}, as returned from \code{\link{flatten}}.
+#' @param skeleton
+#' For internal use
 #' @export
 unflatten <- function(flesh, skeleton=attr(flesh, 'skeleton'), exclude=attr(flesh,'exclude')) {
   class(skeleton) <- setdiff(class(skeleton),'mphcrm.pset')

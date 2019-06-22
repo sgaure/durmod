@@ -6,6 +6,11 @@
 \usage{
 geninv(X, tol = sqrt(.Machine$double.eps))
 }
+\arguments{
+\item{X}{matrix}
+
+\item{tol}{tolerance for determining bad entries}
+}
 \description{
 Moore-Penrose generalized inverse
 }

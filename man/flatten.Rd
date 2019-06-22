@@ -14,7 +14,11 @@ unflatten(flesh, skeleton = attr(flesh, "skeleton"),
 \item{x}{parameter set as typically found in \code{opt[[1]]\$par}, where \code{opt} is
 returned from \code{mphcrm}.}
 
+\item{exclude}{For internal use}
+
 \item{flesh}{vector of class \code{"relistable"}, as returned from \code{\link{flatten}}.}
+
+\item{skeleton}{For internal use}
 }
 \description{
 \code{\link{mphcrm}} stores coefficients in a list, not in a vector. This is

@@ -2,16 +2,22 @@
 % Please edit documentation in R/utils.R
 \name{mphdist}
 \alias{mphdist}
+\alias{mphdist.log}
+\alias{mphmoments}
+\alias{mphmoments.log}
 \title{Extract the mixed proportional hazard distribution}
 \usage{
-mphdist(pset, round = 20)
+mphdist(pset)
+
+mphdist.log(pset)
+
+mphmoments(pset)
+
+mphmoments.log(pset)
 }
 \arguments{
 \item{pset}{a parameter set of class \code{"mphcrm.pset"}, typically
 \code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.}
-
-\item{round}{integer. Number of decimals. In a competing risk model, some of the hazards can be very small, \code{mphdist}
-can round the value so that e.q. \code{1e-8} becomes zero, mostly useful for nice displays.}
 }
 \value{
 matrix where there is one row for each masspoint. The first consists of the probabilities,
@@ -19,4 +25,10 @@ the other columns are the hazards for each transition.
 }
 \description{
 
+
+Same as \code{mphdist}, but the logarithms of the hazards.
+
+Extract moments of the distribution
+
+Same as \code{mphmoments}, but for log hazards
 }

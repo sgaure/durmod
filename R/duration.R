@@ -3,9 +3,9 @@
 #' @description
 #' \code{mphcrm} implements estimation of a mixed proportional hazard competing risk model.
 #' The baseline hazard is of the form \eqn{exp(X \beta)} where \eqn{X} is a
-#' matrix of covariates, and \eqn{\beta} is a vector of paramaters to estimate.
+#' matrix of covariates, and \eqn{\beta} is a vector of parameters to estimate.
 #' In addition there is an intercept term \eqn{\mu}, i.e. the hazard is \eqn{exp(X \beta + \mu)}.
-#' There are several transitions to be made, and a set of (\eqn{X}, \eqn{\beta}, and \eqn{\mu}) for
+#' There are several transitions to be made, and a set of \eqn{X}, \eqn{\beta}, and \eqn{\mu} for
 #' each possible transition.
 #'
 #' Each individual may have several observations, with either a transition at the end of the
@@ -14,7 +14,7 @@
 #' 
 #' For each individual \eqn{i} there is a log likelihood as a function of \eqn{\mu}, called \eqn{M_i(\mu)}.
 #'
-#' The mixture is that the \eqn{\mu}'s are stochastic. I.e. 
+#' The mixture part is that the \eqn{\mu}'s are stochastic. I.e. 
 #' we have probabilities \eqn{p_j}, and a vector of \eqn{\mu_j} of masspoints (one for each transition),
 #' for each such \eqn{j}.
 #'
@@ -23,7 +23,7 @@
 #' The \code{mphcrm()} function maximizes the likelihood \eqn{\sum_i L_i} over
 #' \eqn{p_j}, \eqn{mu_j}, and \eqn{\beta}.
 #'
-#' In addition to the parameters \eqn{\beta}, a variable which records the duration of each
+#' In addition to the covariates specified by a formula, a variable which records the duration of each
 #' observation must be specified.
 #'
 #' In some datasets it is known that not all risks are present at all times. Like, losing your
@@ -44,20 +44,30 @@
 #'
 #' If the covariates differ among the transitions, a multi-part formula can be specified.
 #' E.g. \code{d ~ x1+x2 | x3+x4 | x5+x6}, in which case the first part (\code{x1+x2}) is common
-#' for all the transitions, the second part, \code{x3+x4}, is specific to the first transition,
+#' for all the transitions, the second part, \code{x3+x4}, is specific for the first transition,
 #' the third part is specific for the second transition, and so on. I.e. the covariates
 #' for transition 1 are \code{x1+x2+x3+x4}, whereas the covariates for transition 2 are \code{x1+x2+x5+x6}.
 #' 
 #' @param data
 #' A data frame which contains the covariates.
 #' @param id
-#' The name of the covariate which identifies an individual.
+#' The covariate which identifies an individual
 #' @param durvar
-#' The name of the covariate which contains the length of the observation period. Can be a
+#' The covariate which contains the length of the observation period. Can be a
 #' numeric, in which case all observations are assumed to have the same length. If missing, it
 #' is assumed to be 1.
+#' @param timing
+#' character. The timing in the duration model. Can be one of
+#' \itemize{
+#' \item "exact" The timing is exact, the transition occured at the end of the observation interval.
+#' \item "interval" The transition occured some time during the observation interval. This model
+#'   can be notoriously hard to estimate due to unfavourable numerics. It could be worthwhile to
+#'   lower the control parameter \code{ll.improve} to 0.0001 or something, to ensure it does not
+#'   give up to early.
+#' \item "none" There is no timing, the transition occured, or not. A logit model is used.
+#' }
 #' @param state
-#' The name of a variable which is an index into \code{risksets}, specifying for each observation
+#' A covariate which is an index into \code{risksets}, specifying for each observation
 #' which risks are present.
 #' @param risksets
 #' A list of integer vectors. Each vector is a list of transitions, which risks are present for
@@ -69,9 +79,12 @@
 #' @param control
 #' List of control parameters for the estimation. See \code{\link{mphcrm.control}}.
 #' @param cluster
-#' A cluster specification from package \pkg{parallel} or \pkg{snow}. There is quite some
-#' overhead in running on a cluster, primarily intended for very large datasets. If you have
+#' A cluster specification from package \pkg{parallel} or \pkg{snow}. There is some
+#' overhead in running on a cluster, so it is primarily intended for very large datasets. If you have
 #' more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=n)} instead.
+#'
+#' When using a cluster, the \code{control[['threads']]} parameter is the number of threads on each node.
+#' Make sure you don't run too many threads on each node, that will slow things down dramatically.
 #' @return
 #' A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be
 #' interested in the first entry.
@@ -91,9 +104,15 @@
 #'
 #' If you interrupt \code{mphcrm} it will catch the interrupt and return with the
 #' estimates it has found so far.
+#' @note
+#' The algorithm is not fully deterministic. New points are searched for randomly, there
+#' is no canonical order in which they can be found. It can happen that a point is found
+#' early which makes the rest of the estimation hard, so it terminates early. In particular
+#' when using interval timing. One should
+#' make a couple of runs to ensure they yield reasonably equal results.
 #' @export
 mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
-                   timing=c('exact','interval','logit'),
+                   timing=c('exact','interval','none'),
                    subset, na.action, control=mphcrm.control(),cluster=NULL) {
   timing <- match.arg(timing)
   F <- Formula::as.Formula(formula)
@@ -113,8 +132,10 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   form <- F
   id.v <- bquote(I(.(substitute(id))))
   form <- update(form, as.formula(bquote(. ~ . + .(id.v))))
-  durvar.v <- bquote(I(.(substitute(durvar))))
-  form <- update(form, as.formula(bquote(. ~ . + .(durvar.v))))
+  if(!missing(durvar)) {
+    durvar.v <- bquote(I(.(substitute(durvar))))
+    form <- update(form, as.formula(bquote(. ~ . + .(durvar.v))))
+  }
   if(!missing(state)) {
     state.v <- bquote(I(.(substitute(state))))
     form <- update(form, as.formula(bquote(. ~ . + .(state.v))))
@@ -195,20 +216,33 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 #'   \code{\link{mphcrm}}
 #' @param ...
 #' parameters to change \itemize{
-#' \item \code{callback} A
+#' \item threads integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
+#' \item iters integer. How many iterations should we maximally run. Defaults to 12.
+#' \item ll.improve numeric. How much must the be log-likelihood improve from the last iteration before
+#'   termination. Defaults to 0.001
+#' \item newpoint.maxtime numeric. For how many seconds should a global search for a new point
+#'   improving the likelihood be conducted before we continue with the best we have found. Defaults to
+#'   120.
+#' \item callback A
 #'   user-specified \code{function(fromwhere, opt, spec, control,
 #'   ...)} which is called after each optimization step.  It can be
 #'   used to report what is happening, check whatever it wants, and
 #'   optionally stop the estimation by calling stop(). In this case,
 #'   \code{mphcrm()} will return with the most recently estimated set
-#'   of parameters. See the help on \code{\link{callback_default}} for
+#'   of parameters. See the help on \code{\link{mphcrm.callback}} for
 #'   information on the argument.
+#' \item trap.interrupt logical. Should interrupts be trapped so that \code{mphcrm} returns gracefully?
+#' In this case the program will continue. Defaults to \code{interactive()}.
+#' \item method character. The method used for optimization. Currently 'BFGS' is supported, but it
+#' might work with 'L-BFGS-B' also, if memory is constrained.
 #' }
+#' @note
+#' There are other parameters too, I may document them later. Instead of cluttering
+#' the source code with constants and stuff required by various optimization routines, they
+#' have been put in this control list. You should perhaps not change them.
 #' @return
 #' list of control parameters suitable for the \code{control}
 #'   argument of \code{\link{mphcrm}}
-#' @details
-#' [TBS]
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
@@ -232,7 +266,7 @@ mphcrm.control <- function(...) {
 #' a string which identifies which step in the algorithm it is called from. \code{fromwhere=='full'} means
 #' that it is a full estimation of all the parameters. There are also other codes, when adding a point,
 #' when removing duplicate points. When some optimization is completed it is called with the
-#' return status from \code{\link{optim}} (and in some occasions from \code{\link{nloptr::nloptr}}.
+#' return status from \code{\link{optim}} (and in some occasions from \code{\link[nloptr]{nloptr}}.
 #'
 #' @param opt
 #' Typically the result of a call to \code{\link{optim}}.
@@ -259,7 +293,7 @@ mphcrm.callback <- local({
     now <- Sys.time()
     jobname <- control$jobname
     if(fromwhere == 'removepoints') {
-      p <- pdist(opt)[,'prob']
+      p <- a2p(opt$par$pargs)
       bad <- list(...)[['remove']]
       cat(jobname,  format(Sys.time(),control$tspec), 'remove probs', sprintf(' %.2e',p[bad]),'\n')
     } else {
@@ -309,6 +343,7 @@ pointiter <- function(dataset,pset,control) {
   opt0$value <- -opt0$value
   opt0$par <- pset
   opt0$mainiter <- 0
+  opt0$nobs <- dataset$nobs
   class(opt0) <- 'mphcrm.opt'
 
   control$callback('nullmodel',opt0,dataset,control)
@@ -561,6 +596,7 @@ ml <- function(dataset,pset,control) {
     opt$hessian <- hLL(flatten(opt$par),skel,dataset,control)
     dimnames(opt$hessian) <- list(nm,nm)
   }
+  opt$nobs <- dataset$nobs
   structure(opt,class='mphcrm.opt')
 }
 
@@ -693,6 +729,6 @@ parseformula <- function(formula,mf) {
     list(mat=t(mat),faclist=faclist)
   })
   names(data) <- levels(df)[-1]
-  dataset <- list(data=data, d=d)
+  dataset <- list(data=data, d=d, nobs=nrow(mf))
   dataset
 }
