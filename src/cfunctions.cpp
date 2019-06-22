@@ -4,8 +4,10 @@
 #include <Rmath.h>
 #include <R_ext/Applic.h>
 #include <Rcpp.h>
+#include <stdlib.h>
 #include <omp.h>
 #include <string.h>
+// [[Rcpp::plugins(cpp11)]
 // [[Rcpp::plugins(openmp)]]
 using namespace Rcpp;
 
@@ -341,7 +343,7 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
       // Less than some limit, we dsyrk a smaller one
       
       double *smallblock = new (std::nothrow) double[fishblock*nnrank];
-      if(smallblock == nullptr) {(*memfail)++; return;}
+      if(smallblock == 0) {(*memfail)++; return;}
 
       for(int b = 0; b < fishblock; b++) {
 	for(int k = 0; k < nnrank; k++) {
@@ -352,7 +354,7 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
       const double alpha=-1, beta=0;
       
       double *smallfish = new (std::nothrow) double[nnrank*nnrank];
-      if(smallfish == nullptr) {(*memfail)++; delete [] smallblock; return;}
+      if(smallfish == 0) {(*memfail)++; delete [] smallblock; return;}
       F77_CALL(dsyrk)("U","N",&nnrank,&fishblock,&alpha,smallblock,&nnrank,&beta,
 		      smallfish, &nnrank);
       delete [] smallblock;
@@ -391,7 +393,7 @@ NumericVector cloglik(List dataset, List pset, List control,
   List parset = as<List>(pset["parset"]);
   const double *pargs = REAL(as<NumericVector>(pset["pargs"]));
   const int npoints = 1 + as<NumericVector>(pset["pargs"]).size();
-  double *logprobs = new  double[npoints];
+  double *logprobs = (double*) R_alloc(npoints, sizeof(double)); 
   
   a2logp(npoints-1,pargs,logprobs);
   const int N = d.size();
@@ -401,8 +403,9 @@ NumericVector cloglik(List dataset, List pset, List control,
   const int nrisks = risklist.size();
   IntegerVector state = as<IntegerVector>(dataset["state"]);
 
-  bool *riskmasks = new  bool[nrisks*transitions]();
-  
+  bool *riskmasks = (bool*) R_alloc(nrisks*transitions, sizeof(bool)); 
+  memset(riskmasks,0,nrisks*transitions*sizeof(bool));
+
   for(int i = 0; i < nrisks; i++) {
     IntegerVector v = as<IntegerVector>(risklist[i]);
     for(int t = 0; t < v.size(); t++) {
@@ -412,16 +415,16 @@ NumericVector cloglik(List dataset, List pset, List control,
   
   // pointers into the data
 
-  double **matp = new  double*[transitions];
+  double **matp = (double **) R_alloc(transitions, sizeof(double*));
   
-  int *nvars = new  int[transitions];
+  int *nvars = (int*) R_alloc(transitions, sizeof(int)); 
   
   // number of factors in each transition
 
-  int *nfacs = new  int[transitions];
+  int *nfacs = (int*) R_alloc(transitions, sizeof(int)); 
 
   // pointers to factor lists
-  FACTOR **factors = new  FACTOR*[transitions];
+  FACTOR **factors = (FACTOR**) R_alloc(transitions, sizeof(FACTOR*)); 
   List data = as<List>(dataset["data"]);
   for(int i = 0; i < transitions; i++) {
     NumericMatrix smat = as<NumericMatrix>(as<List>(data[i])["mat"]);
@@ -432,7 +435,7 @@ NumericVector cloglik(List dataset, List pset, List control,
     nfacs[i] = facs.size();
     //    printf("nfacs[%d] = %ld\n",i,nfacs[i]);
     if(nfacs[i] == 0) continue;
-    factors[i] = new  FACTOR[nfacs[i]];
+    factors[i] = (FACTOR*) R_alloc(nfacs[i], sizeof(FACTOR)); 
 
     for(int j = 0; j < nfacs[i]; j++) {
       IntegerVector fac = as<IntegerVector>(facs[j]);
@@ -451,11 +454,11 @@ NumericVector cloglik(List dataset, List pset, List control,
 
   // pointers into the parameters
 
-  double **betap = new  double*[transitions];
-  double **mup = new  double*[transitions];
+  double **betap = (double **) R_alloc(transitions, sizeof(double *)); 
+  double **mup = (double **) R_alloc(transitions, sizeof(double *)); 
 
-  FACTORPAR **facpars = new FACTORPAR*[transitions];
-  int *faclevels = new int[transitions];
+  FACTORPAR **facpars = (FACTORPAR **) R_alloc(transitions, sizeof(FACTORPAR*)); 
+  int *faclevels = (int*) R_alloc(transitions, sizeof(int)); 
   for(int i = 0; i < transitions; i++) {
     betap[i] = REAL(as<List>(parset[i])["pars"]);
     mup[i] = REAL(as<List>(parset[i])["mu"]);
@@ -464,7 +467,7 @@ NumericVector cloglik(List dataset, List pset, List control,
 				      Rfacs.size(),nfacs[i]);
     faclevels[i] = 0;
     if(nfacs[i] > 0) {
-      facpars[i] = new FACTORPAR[Rfacs.size()];
+      facpars[i] = (FACTORPAR *) R_alloc(nfacs[i], sizeof(FACTORPAR)); 
       for(int j = 0; j < nfacs[i]; j++) {
 	facpars[i][j].par = REAL(as<NumericVector>(Rfacs[j]));
 	facpars[i][j].nlevels = as<NumericVector>(Rfacs[j]).size();
@@ -486,10 +489,9 @@ NumericVector cloglik(List dataset, List pset, List control,
 
   double LL = 0.0;
   const int gradsize = dograd ? totalpars : 1;
-  double *grad = new double[gradsize]();
 
   double *gradblock = 0;
-  if(dofisher) gradblock = new double[fishblock*gradsize];
+  if(dofisher) gradblock = (double *) R_alloc(fishblock*gradsize, sizeof(double)); 
   int gradfill = 0;
 
   // Our fisher matrix is global, and updated inside a critial region
@@ -503,16 +505,18 @@ NumericVector cloglik(List dataset, List pset, List control,
 
   // Then some thread private storage which are static in the parallel for below.
   // We don't want to allocate in the loop.
- // must be static to allocate thread private
-  static double *lh;
+  // must be static to allocate thread private
+  // we could do array reduction on the gradient, but it's not supported in
+  // the current C-compiler for windows on cran. So do it manually.
+  static double *lh, *totgrad;
   static double *spellgrad, *llspell, *dllspell; 
   int *nonzero; // only used temporarily in critical section, so not thread local
-  if(dofisher) nonzero = new int[totalpars];
+  if(dofisher) nonzero = (int*) R_alloc(totalpars, sizeof(int)); 
 
-#pragma omp threadprivate(llspell,dllspell, lh, spellgrad)
-  // Allocate it
+#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad)
 #pragma omp parallel num_threads(nthreads)
   {  
+    totgrad = new double[gradsize]();
     llspell = new double[npoints];
     lh = new double[transitions];
     if(dograd) {
@@ -524,20 +528,19 @@ NumericVector cloglik(List dataset, List pset, List control,
   // Remember not to use any R-functions (or allocate Rcpp storage) inside the parallel region.
 
   int memfail = 0;
-#pragma omp parallel for reduction(+:grad[:gradsize], LL) num_threads(nthreads) schedule(guided)
+#pragma omp parallel for reduction(+: LL) num_threads(nthreads) schedule(guided)
   for(int spellno = 0; spellno < nspells; spellno++) {
     if(memfail > 0) continue;
     memset(llspell, 0, npoints*sizeof(*llspell));
     if(dograd) memset(dllspell, 0, npoints*npars*sizeof(*dllspell));
     for(int i = spellidx[spellno]; i < spellidx[spellno+1]; i++) {
-      
       // compute the log hazard for this observation for each masspoint and transition
       // loop through the mass points. For each find the hazard sum
       // fill in the loghazards in the lh-array
       const bool *riskmask = nrisks>0 ? &riskmasks[(state[i]-1)*transitions] : 0;
       for(int t = 0; t < transitions; t++) {
 	lh[t] = 0.0;
-	if(riskmask && !riskmask[t]) continue;  // should this be here?
+	if(riskmask && !riskmask[t]) continue;  
 	const double *mat = &matp[t][i*nvars[t]];
 	const double *beta = betap[t];
 	for(int k = 0; k < nvars[t]; k++) {
@@ -559,7 +562,7 @@ NumericVector cloglik(List dataset, List pset, List control,
       if(dograd) gobsloglik(d[i], timing, lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
 			    riskmask, nvars, matp, factors, dllspell);
     }
-    
+
     // We have collected the loglikelihood of a spell, one for each masspoint
     // integrate it with the probabilities
     double ll;
@@ -577,7 +580,7 @@ NumericVector cloglik(List dataset, List pset, List control,
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
 		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad);
 	// update global gradient with spell gradient
-	for(int k = 0; k < totalpars; k++) grad[k] += spellgrad[k];
+	for(int k = 0; k < totalpars; k++) totgrad[k] += spellgrad[k];
 
 	if(dofisher) {
 	  // update the fisher matrix from the spellgrad
@@ -589,6 +592,7 @@ NumericVector cloglik(List dataset, List pset, List control,
     } 
   }  // end of spell loop
 
+
   // Deallocate thread private storage
 #pragma omp parallel num_threads(nthreads)
   {  
@@ -599,7 +603,25 @@ NumericVector cloglik(List dataset, List pset, List control,
       delete [] spellgrad;
     }
   }
-  if(dofisher) delete [] nonzero;
+
+  if(memfail > 0) {delete [] totgrad; stop("Memory allocation failed");}
+
+  // Then set up the return value
+  NumericVector ret = NumericVector::create(LL);
+
+  if(dograd) {
+    // Reduce the totgrad in a critical section
+    NumericVector retgrad(totalpars);
+    double *grad = REAL(retgrad);
+#pragma omp parallel num_threads(nthreads) 
+    {
+#pragma omp critical
+      for(int k = 0; k < gradsize; k++) grad[k] += totgrad[k];
+    }
+    if(dograd) delete [] totgrad;
+    ret.attr("gradient") = retgrad;
+  }
+
 
   // if anything remains in the gradient blocks, dsyrk it into the fisher matrix
   if(dofisher && gradfill > 0) {
@@ -609,33 +631,6 @@ NumericVector cloglik(List dataset, List pset, List control,
  
   }
 
-  // deallocate other storage
-  if(dofisher) delete [] gradblock;
-
-  delete [] logprobs;
-  delete [] riskmasks;
-  delete [] matp;
-  delete [] nvars;
-  for(int t = 0; t < transitions; t++) {
-    if(nfacs[t] > 0) delete [] factors[t];
-    if(nfacs[t] > 0) delete [] facpars[t];
-  }
-  delete [] factors;
-  delete [] nfacs;
-  delete [] betap;
-  delete [] mup;
-  delete [] facpars;
-  delete [] faclevels;
-
-  if(memfail > 0) {if(dograd) delete [] grad; stop("Memory allocation failed");}
-  // Then set up the return value
-  NumericVector ret = NumericVector::create(LL);
-  if(dograd) {
-    NumericVector retgrad(totalpars);
-    (void) memcpy(REAL(retgrad), grad, gradsize*sizeof(*grad));
-    ret.attr("gradient") = retgrad;
-    delete [] grad;
-  }
   if(dofisher)  {
     // fill the lower half of the fisher matrix
     // read consecutively, write with stride, that's typically faster
