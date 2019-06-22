@@ -5,6 +5,8 @@
 \alias{mphdist.log}
 \alias{mphmoments}
 \alias{mphmoments.log}
+\alias{mphcovs}
+\alias{mphcovs.log}
 \title{Extract the mixed proportional hazard distribution}
 \usage{
 mphdist(pset)
@@ -14,6 +16,10 @@ mphdist.log(pset)
 mphmoments(pset)
 
 mphmoments.log(pset)
+
+mphcovs(pset)
+
+mphcovs.log(pset)
 }
 \arguments{
 \item{pset}{a parameter set of class \code{"mphcrm.pset"}, typically
@@ -24,11 +30,5 @@ matrix where there is one row for each masspoint. The first consists of the prob
 the other columns are the hazards for each transition.
 }
 \description{
-
-
-Same as \code{mphdist}, but the logarithms of the hazards.
-
-Extract moments of the distribution
-
-Same as \code{mphmoments}, but for log hazards
+Various functions for extracting the proportional hazard distribution.
 }

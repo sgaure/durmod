@@ -10,9 +10,7 @@ BugReports: http://github.com/sgaure/durmod/issues
 Maintainer: Simen Gaure <simen@gaure.no>
 Description: Estimation of mixed proportional hazard competing risk model.
 License: Artistic-2.0
-Imports: Rcpp (>= 1.0.1), stats, utils
-Depends: Formula, numDeriv, nloptr, parallel
-Suggests: snow, Rmpi
+Imports: Rcpp (>= 1.0.1), stats, utils, Formula, numDeriv, nloptr, parallel, data.table, mvtnorm
 LinkingTo: Rcpp
 Encoding: UTF-8
 RoxygenNote: 6.1.1

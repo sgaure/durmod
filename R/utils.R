@@ -30,7 +30,7 @@ nazero <- function(x) ifelse(is.na(x),0,x)
 #' Extract the mixed proportional hazard distribution
 #'
 #' @description
-#' 
+#' Various functions for extracting the proportional hazard distribution.
 #' @param pset
 #' a parameter set of class \code{"mphcrm.pset"}, typically
 #' \code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.
@@ -50,7 +50,6 @@ mphdist <- function(pset) {
 }
 
 #' Extract the mixed proportional log hazard distribution
-#' @description Same as \code{mphdist}, but the logarithms of the hazards.
 #' @rdname mphdist
 #' @export
 mphdist.log <- function(pset) {
@@ -65,7 +64,6 @@ mphdist.log <- function(pset) {
 }
 
 #' Extract moments of the mixed proportional hazard distribution
-#' @description Extract moments of the distribution
 #' @rdname mphdist
 #' @export
 mphmoments <- function(pset) {
@@ -77,7 +75,6 @@ mphmoments <- function(pset) {
 }
 
 #' Extract moments of the mixed proportional log hazard distribution
-#' @description Same as \code{mphmoments}, but for log hazards
 #' @rdname mphdist
 #' @export
 mphmoments.log <- function(pset) {
@@ -88,6 +85,23 @@ mphmoments.log <- function(pset) {
   cbind(mean,variance,sd)
 }
 
+#' Extract covariance matrix of the proportional hazard distribution
+#' @rdname mphdist
+#' @export
+mphcovs <- function(pset) {
+  dist <- mphdist(pset)
+  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
+  crossprod(dist[,1]*(dist[,-1]-rep(mean,echo=nrow(dist))))
+}
+
+#' Extract covariance matrix of the proportional hazard distribution
+#' @rdname mphdist
+#' @export
+mphcovs.log <- function(pset) {
+  dist <- mphdist.log(pset)
+  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
+  crossprod(dist[,1]*(dist[,-1]-rep(mean,echo=nrow(dist))))
+}
 
 #' Extract standard errors of the estimated parameters
 #' @param x

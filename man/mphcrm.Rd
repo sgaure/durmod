@@ -40,8 +40,11 @@ the observation.}
 
 \item{timing}{character. The timing in the duration model. Can be one of
 \itemize{
-\item "exact" The timing is exact, the transition occured at the end of the observation interval
-\item "interval" The transition occured some time during the observation interval
+\item "exact" The timing is exact, the transition occured at the end of the observation interval.
+\item "interval" The transition occured some time during the observation interval. This model
+  can be notoriously hard to estimate due to unfavourable numerics. It could be worthwhile to
+  lower the control parameter \code{ll.improve} to 0.0001 or something, to ensure it does not
+  give up to early.
 \item "none" There is no timing, the transition occured, or not. A logit model is used.
 }}
 
@@ -110,4 +113,11 @@ The result of every iteration is returned in a list.
 
 If you interrupt \code{mphcrm} it will catch the interrupt and return with the
 estimates it has found so far.
+}
+\note{
+The algorithm is not fully deterministic. New points are searched for randomly, there
+is no canonical order in which they can be found. It can happen that a point is found
+early which makes the rest of the estimation hard, so it terminates early. In particular
+when using interval timing. One should
+make a couple of runs to ensure they yield reasonably equal results.
 }

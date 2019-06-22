@@ -9,3 +9,7 @@ cloglik <- function(dataset, pset, control, gdiff = FALSE, dogradient = FALSE, d
     .Call(`_durmod_cloglik`, dataset, pset, control, gdiff, dogradient, dofisher)
 }
 
+genspell <- function(x1, x2, ve, vp, censor) {
+    .Call(`_durmod_genspell`, x1, x2, ve, vp, censor)
+}
+

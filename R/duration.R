@@ -246,7 +246,7 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=12,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               method='BFGS', gdiff=FALSE, minprob=0, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
+               method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
@@ -293,7 +293,7 @@ mphcrm.callback <- local({
     now <- Sys.time()
     jobname <- control$jobname
     if(fromwhere == 'removepoints') {
-      p <- a2p(opt$par$pargs)
+      p <- a2p(opt$pargs)
       bad <- list(...)[['remove']]
       cat(jobname,  format(Sys.time(),control$tspec), 'remove probs', sprintf(' %.2e',p[bad]),'\n')
     } else {
@@ -489,8 +489,9 @@ badpoints <- function(pset,control) {
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
         colnames(mumat) <- names(pset$parset)
-        cat(sprintf('%s %s points %d and %d are equal\n',jobname, format(Sys.time(),control$tspec),j,i),'\n')
-        print(cbind(prob=c(p[j],p[i]),exp(mumat)))
+        control$callback('equalpoints',pset,NULL,control,cbind(prob=c(p[j],p[i]),exp(mumat)))
+#        cat(sprintf('%s %s points %d and %d are equal\n',jobname, format(Sys.time(),control$tspec),j,i),'\n')
+#        print()
         okpt[i] <- FALSE
         p[j] <- p[j]+p[i]
       }

@@ -31,10 +31,26 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// genspell
+List genspell(double x1, double x2, double ve, double vp, double censor);
+RcppExport SEXP _durmod_genspell(SEXP x1SEXP, SEXP x2SEXP, SEXP veSEXP, SEXP vpSEXP, SEXP censorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type x1(x1SEXP);
+    Rcpp::traits::input_parameter< double >::type x2(x2SEXP);
+    Rcpp::traits::input_parameter< double >::type ve(veSEXP);
+    Rcpp::traits::input_parameter< double >::type vp(vpSEXP);
+    Rcpp::traits::input_parameter< double >::type censor(censorSEXP);
+    rcpp_result_gen = Rcpp::wrap(genspell(x1, x2, ve, vp, censor));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_durmod_cdebug", (DL_FUNC) &_durmod_cdebug, 1},
     {"_durmod_cloglik", (DL_FUNC) &_durmod_cloglik, 6},
+    {"_durmod_genspell", (DL_FUNC) &_durmod_genspell, 5},
     {NULL, NULL, 0}
 };
 
