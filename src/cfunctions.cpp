@@ -196,7 +196,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       // the derivative w.r.t x of the log likelihood
       // log(1-exp(-d H)) - log(H) + L
       
-      double funnyexpr;
+      double funnyexpr = 0;
       if(timing == interval)
 	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) +
 	  expm1(lh[t]+mup[t][j]-logsumhaz);
@@ -496,7 +496,7 @@ NumericVector cloglik(List dataset, List pset, List control,
 
   // Our fisher matrix is global, and updated inside a critial region
   // We could do a reduction(+) on it instead, but that may consume too much memory
-  NumericMatrix *retfisher;
+  NumericMatrix *retfisher = 0;
   double *fisher;
   if(dofisher) {
     retfisher = new NumericMatrix(gradsize,gradsize);
