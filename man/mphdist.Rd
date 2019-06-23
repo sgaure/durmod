@@ -23,7 +23,9 @@ mphcovs.log(pset)
 }
 \arguments{
 \item{pset}{a parameter set of class \code{"mphcrm.pset"}, typically
-\code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.}
+\code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.
+If given a list of results, extracts the
+first in the list.}
 }
 \value{
 matrix where there is one row for each masspoint. The first consists of the probabilities,

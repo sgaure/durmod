@@ -1,0 +1,119 @@
+
+R Under development (unstable) (2019-06-21 r76731) -- "Unsuffered Consequences"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> pkgname <- "durmod"
+> source(file.path(R.home("share"), "R", "examples-header.R"))
+> options(warn = 1)
+> base::assign(".ExTimings", "durmod-Ex.timings", pos = 'CheckExEnv')
+> base::cat("name\tuser\tsystem\telapsed\n", file=base::get(".ExTimings", pos = 'CheckExEnv'))
+> base::assign(".format_ptime",
++ function(x) {
++   if(!is.na(x[4L])) x[1L] <- x[1L] + x[4L]
++   if(!is.na(x[5L])) x[2L] <- x[2L] + x[5L]
++   options(OutDec = '.')
++   format(x[1L:3L], digits = 7L)
++ },
++ pos = 'CheckExEnv')
+> 
+> ### * </HEADER>
+> library('durmod')
+> 
+> base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
+> base::assign(".old_wd", base::getwd(), pos = 'CheckExEnv')
+> cleanEx()
+> nameEx("datagen")
+> ### * datagen
+> 
+> flush(stderr()); flush(stdout())
+> 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
+> ### Name: datagen
+> ### Title: Generate example data
+> ### Aliases: datagen
+> 
+> ### ** Examples
+> 
+> dataset <- datagen(4000,1200)
+> print(dataset)
+        id          x1          x2 alpha         d     duration
+   1:    1 -0.62645381 -1.13463018     0      exit   1.53212406
+   2:    2  0.18364332  0.76455710     0 treatment   2.93932483
+   3:    2  0.18364332  0.76455710     1      exit  89.49070267
+   4:    3 -0.83562861  0.57071014     0 treatment  20.34927785
+   5:    3  0.30585724 -0.24484168     1      none 104.36704353
+  ---                                                          
+8905: 3996 -0.14220382 -1.93520970     0      exit   6.77852741
+8906: 3997  0.86428592  0.04940619     0      exit   0.01526583
+8907: 3998 -0.02190459 -0.83757248     0      exit   1.30369806
+8908: 3999 -0.26473088 -1.32637122     0      exit   0.15894825
+8909: 4000 -0.91331303 -1.78634379     0      exit   0.25592942
+> risksets <- list(untreated=c(1,2), treated=c(1))
+> # just two iterations to save time
+> opt <- mphcrm(d ~ x1+x2|alpha, data=dataset, id=id, durvar=duration,state=alpha+1,risksets=risksets,
++               control=mphcrm.control(threads=1,iters=2))
+mphcrm 09:29:55 i:1 pts:1 L:-22237.0457 g:0.00017 mp:1 rcond:0.01 e:-0.0000 t:0.6s
+mphcrm 09:29:57 i:2 pts:2 L:-21191.0467 g:4.69e-05 mp:0.33471 rcond:0.011 e:0.6375 t:1.9s
+> best <- opt[[1]]
+> print(best)
+Estimate with 2 points, log-likelihood: -21191.0467
+     exit.x1      exit.x2   exit.alpha treatment.x1 treatment.x2        pargs 
+   0.8021264   -0.7185632   -0.3632802    0.8345933    0.3673412   -0.6869582 
+
+Proportional hazard distribution
+              prob       exit  treatment
+point  1 0.6652899 0.16155599 0.09237020
+point  2 0.3347101 0.02231063 0.01899534
+> summary(best)
+$loglik
+[1] -21191.05
+
+$coefs
+                  value         se         t      Pr(>|t|)
+exit.x1       0.8021264 0.01242302  64.56773  0.000000e+00
+exit.x2      -0.7185632 0.01244944 -57.71853  0.000000e+00
+exit.alpha   -0.3632802 0.03510284 -10.34902  5.852914e-25
+treatment.x1  0.8345933 0.02142257  38.95860 1.022363e-306
+treatment.x2  0.3673412 0.02514729  14.60759  8.942361e-48
+pargs        -0.6869582 0.05605623 -12.25481  2.985291e-34
+
+$moments
+                mean    variance         sd
+exit      0.11494917 0.004317588 0.06570835
+treatment 0.06781089 0.001198876 0.03462479
+
+> 
+> 
+> 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("datagen", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
+> ### * <FOOTER>
+> ###
+> cleanEx()
+> options(digits = 7L)
+> base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
+Time elapsed:  3.32 0.039 3.366 0.006 0 
+> grDevices::dev.off()
+null device 
+          1 
+> ###
+> ### Local variables: ***
+> ### mode: outline-minor ***
+> ### outline-regexp: "\\(> \\)?### [*]+" ***
+> ### End: ***
+> quit('no')

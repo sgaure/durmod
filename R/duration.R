@@ -157,7 +157,7 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   dataset$id <- id
   # zero-based index of beginning of spells. padded with one after the last observation
   dataset$spellidx <- c(0,which(diff(as.integer(id))!=0),length(id))
-  
+  dataset$nspells <- length(dataset$spellidx)-1
   if(missing(durvar)) {
     duration <- 1
   } else {
@@ -344,6 +344,7 @@ pointiter <- function(dataset,pset,control) {
   opt0$par <- pset
   opt0$mainiter <- 0
   opt0$nobs <- dataset$nobs
+  opt0$nspells <- dataset$nspells
   class(opt0) <- 'mphcrm.opt'
 
   control$callback('nullmodel',opt0,dataset,control)
@@ -598,6 +599,7 @@ ml <- function(dataset,pset,control) {
     dimnames(opt$hessian) <- list(nm,nm)
   }
   opt$nobs <- dataset$nobs
+  opt$nspells <- dataset$nspells
   structure(opt,class='mphcrm.opt')
 }
 

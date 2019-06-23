@@ -34,11 +34,15 @@ nazero <- function(x) ifelse(is.na(x),0,x)
 #' @param pset
 #' a parameter set of class \code{"mphcrm.pset"}, typically
 #' \code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.
+#' If given a list of results, extracts the
+#' first in the list.
 #' @return
 #' matrix where there is one row for each masspoint. The first consists of the probabilities,
 #' the other columns are the hazards for each transition.
 #' @export
 mphdist <- function(pset) {
+  if(inherits(pset,'mphcrm.list')) pset <- pset[[1]]$par
+  if(inherits(pset,'mphcrm.opt')) pset <- pset$par
   mus <- exp(sapply(pset$parset, function(pp) pp$mu))
   if(is.null(colnames(mus))) {
     mus <- t(mus)
@@ -53,6 +57,8 @@ mphdist <- function(pset) {
 #' @rdname mphdist
 #' @export
 mphdist.log <- function(pset) {
+  if(inherits(pset,'mphcrm.list')) pset <- pset[[1]]$par
+  if(inherits(pset,'mphcrm.opt')) pset <- pset$par
   mus <- sapply(pset$parset, function(pp) pp$mu)
   if(is.null(colnames(mus))) {
     mus <- t(mus)

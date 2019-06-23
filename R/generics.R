@@ -148,3 +148,22 @@ exclude <- function(x,exclude,...) {
   # the generic doesn't have a ... argument, so call it directly
   relist(getS3method('unlist','mphcrm.pset')(x,exclude=exclude))
 }
+
+#' @method logLik mphcrm.opt
+#' @param useobs Use number of observations for computing degrees of freedom, not number of spells.
+#' @export
+logLik.mphcrm.opt <- function(object, ..., useobs=FALSE) {
+  val <- object$value
+  attr(val, 'nall') <- object$nobs
+  attr(val, 'nobs') <- object$nspells 
+  if(useobs) N <- object$nobs else N <- object$nspells
+  attr(val, 'df') <- length(flatten(object$par))
+  structure(val, class='logLik')
+}
+
+#' @method logLik mphcrm.list
+#' @export
+logLik.mphcrm.list <- function(object,..., useobs=FALSE) {
+  logLik(object[[1]],...,useobs)
+}
+

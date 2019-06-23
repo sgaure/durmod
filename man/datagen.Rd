@@ -26,7 +26,7 @@ individual heterogeneity. It is this hidden heterogeneity which is modeled by th
 hazard distribution.
 }
 \examples{
-dataset <- datagen(4000,80)
+dataset <- datagen(4000,1200)
 print(dataset)
 risksets <- list(untreated=c(1,2), treated=c(1))
 # just two iterations to save time
