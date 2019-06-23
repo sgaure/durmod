@@ -20,6 +20,18 @@ Type 'q()' to quit R.
 > pkgname <- "durmod"
 > source(file.path(R.home("share"), "R", "examples-header.R"))
 > options(warn = 1)
+> base::assign(".ExTimings", "durmod-Ex.timings", pos = 'CheckExEnv')
+> base::cat("name\tuser\tsystem\telapsed\n", file=base::get(".ExTimings", pos = 'CheckExEnv'))
+> base::assign(".format_ptime",
++ function(x) {
++   if(!is.na(x[4L])) x[1L] <- x[1L] + x[4L]
++   if(!is.na(x[5L])) x[2L] <- x[2L] + x[5L]
++   options(OutDec = '.')
++   format(x[1L:3L], digits = 7L)
++ },
++ pos = 'CheckExEnv')
+> 
+> ### * </HEADER>
 > library('durmod')
 > 
 > base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
@@ -30,6 +42,7 @@ Type 'q()' to quit R.
 > 
 > flush(stderr()); flush(stdout())
 > 
+> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: datagen
 > ### Title: Generate example data
 > ### Aliases: datagen
@@ -54,8 +67,8 @@ Type 'q()' to quit R.
 > # just two iterations to save time
 > opt <- mphcrm(d ~ x1+x2|alpha, data=dataset, id=id, durvar=duration,state=alpha+1,risksets=risksets,
 +               control=mphcrm.control(threads=1,iters=2))
-mphcrm 10:06:25 i:1 pts:1 L:-22237.0457 g:0.00017 mp:1 rcond:0.01 e:-0.0000 t:0.6s
-mphcrm 10:06:27 i:2 pts:2 L:-21191.0467 g:4.69e-05 mp:0.33471 rcond:0.011 e:0.6375 t:1.8s
+mphcrm 11:02:06 i:1 pts:1 L:-22237.0457 g:0.00017 mp:1 rcond:0.01 e:-0.0000 t:0.6s
+mphcrm 11:02:08 i:2 pts:2 L:-21191.0467 g:4.69e-05 mp:0.33471 rcond:0.011 e:0.6375 t:1.7s
 > best <- opt[[1]]
 > print(best)
 Estimate with 2 points, log-likelihood: -21191.0467
@@ -87,12 +100,14 @@ treatment 0.06781089 0.001198876 0.03462479
 > 
 > 
 > 
+> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
+> base::cat("datagen", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > ### * <FOOTER>
 > ###
 > cleanEx()
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  3.12 0.03 3.158 0.006 0 
+Time elapsed:  3.164 0.051 3.219 0.005 0.002 
 > grDevices::dev.off()
 null device 
           1 

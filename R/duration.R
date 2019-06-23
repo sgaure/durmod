@@ -204,6 +204,7 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
     
   pset <- makeparset(dataset,1)
   # reset timer
+  if(is.null(control$callback)) control$callback <- function(...) {}
   assign('lastfull',Sys.time(),envir=environment(mphcrm.callback))
   if(!is.null(cluster)) {prepcluster(cluster,dataset,control); on.exit(cleancluster(cluster))}
   pointiter(dataset,pset,control)
