@@ -33,4 +33,21 @@ the other columns are the hazards for each transition.
 }
 \description{
 Various functions for extracting the proportional hazard distribution.
+
+\code{mphmoments.log} returns the first and second moments of the log hazard distribution.
+
+\code{mphcovs} returns the variance/covariance matrix of the hazard distribution.
+
+\code{mphcovs} returns the variance/covariance matrix of the log hazard distribution.
+}
+\details{
+\code{mphmoments} returns the first and second moments of the hazard distribution.
+}
+\examples{
+# load a dataset and a precomputed fitted model
+data(durdata)
+best <- fit[[1]]
+mphdist(best)
+mphmoments(best)
+mphcovs.log(best)
 }

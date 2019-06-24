@@ -4,6 +4,13 @@
 #'
 #' @param X matrix
 #' @param tol tolerance for determining bad entries
+#' @examples
+#' # create a positive definite 5x5 matrix
+#' x <- crossprod(matrix(rnorm(25),5))
+#' # make it singular
+#' x[,2] <- x[,3]+x[,5]
+#' geninv(x)
+#' @export
 geninv <- function(X, tol=sqrt(.Machine$double.eps)) {
   if (length(dim(X)) > 2L || !is.numeric(X)) 
     stop("'X' must be a numeric matrix")
@@ -14,7 +21,7 @@ geninv <- function(X, tol=sqrt(.Machine$double.eps)) {
   inv <- if (all(Positive)) 
     Xsvd$v %*% (1/Xsvd$d * t(Xsvd$u))
   else if (!any(Positive)) 
-    array(0, dim(X)[2L:1L])
+    array(NA, dim(X)[2L:1L])
   else {
     im <- Xsvd$v[, Positive, drop = FALSE] %*% ((1/Xsvd$d[Positive]) * 
                                                  t(Xsvd$u[, Positive, drop = FALSE]))
@@ -39,6 +46,13 @@ nazero <- function(x) ifelse(is.na(x),0,x)
 #' @return
 #' matrix where there is one row for each masspoint. The first consists of the probabilities,
 #' the other columns are the hazards for each transition.
+#' @examples
+#' # load a dataset and a precomputed fitted model
+#' data(durdata)
+#' best <- fit[[1]]
+#' mphdist(best)
+#' mphmoments(best)
+#' mphcovs.log(best)
 #' @export
 mphdist <- function(pset) {
   if(inherits(pset,'mphcrm.list')) pset <- pset[[1]]$par
@@ -71,6 +85,8 @@ mphdist.log <- function(pset) {
 
 #' Extract moments of the mixed proportional hazard distribution
 #' @rdname mphdist
+#' @details
+#' \code{mphmoments} returns the first and second moments of the hazard distribution.
 #' @export
 mphmoments <- function(pset) {
   dist <- mphdist(pset)
@@ -82,6 +98,8 @@ mphmoments <- function(pset) {
 
 #' Extract moments of the mixed proportional log hazard distribution
 #' @rdname mphdist
+#' @description
+#' \code{mphmoments.log} returns the first and second moments of the log hazard distribution.
 #' @export
 mphmoments.log <- function(pset) {
   dist <- mphdist.log(pset)
@@ -93,6 +111,8 @@ mphmoments.log <- function(pset) {
 
 #' Extract covariance matrix of the proportional hazard distribution
 #' @rdname mphdist
+#' @description
+#' \code{mphcovs} returns the variance/covariance matrix of the hazard distribution.
 #' @export
 mphcovs <- function(pset) {
   dist <- mphdist(pset)
@@ -102,6 +122,8 @@ mphcovs <- function(pset) {
 
 #' Extract covariance matrix of the proportional hazard distribution
 #' @rdname mphdist
+#' @description
+#' \code{mphcovs} returns the variance/covariance matrix of the log hazard distribution.
 #' @export
 mphcovs.log <- function(pset) {
   dist <- mphdist.log(pset)
@@ -125,6 +147,10 @@ se <- function(x,tol=1e-9) {
 #' Prints a time in seconds as e.g. \code{"3m4s"}.
 #' @param t
 #' numeric. time in seconds.
+#' @examples
+#' timestr(1.3)
+#' timestr(73)
+#' timestr(4684)
 #' @export
 timestr <- function(t) {
   dec <- t - as.integer(t)

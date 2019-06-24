@@ -14,15 +14,18 @@
 #' @param N integer.
 #' The number of individuals in the dataset
 #' @param censor numeric. The total observation period.
+#' @note
+#' The example illustrates how data(durdata) was generated.
 #' @examples
 #' data.table::setDTthreads(1)
-#' dataset <- datagen(4000,1200)
+#' dataset <- datagen(5000,80)
 #' print(dataset)
 #' risksets <- list(untreated=c(1,2), treated=c(1))
 #' # just two iterations to save time
-#' opt <- mphcrm(d ~ x1+x2|alpha, data=dataset, id=id, durvar=duration,state=alpha+1,risksets=risksets,
-#'               control=mphcrm.control(threads=1,iters=2))
-#' best <- opt[[1]]
+#' Fit <- mphcrm(d ~ x1+x2|alpha, data=dataset, id=id, durvar=duration,
+#'           state=alpha+1,risksets=risksets,
+#'           control=mphcrm.control(threads=1,iters=2))
+#' best <- Fit[[1]]
 #' print(best)
 #' summary(best)
 #' @export

@@ -12,3 +12,8 @@ timestr(t)
 \description{
 Prints a time in seconds as e.g. \code{"3m4s"}.
 }
+\examples{
+timestr(1.3)
+timestr(73)
+timestr(4684)
+}

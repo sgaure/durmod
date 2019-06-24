@@ -121,3 +121,15 @@ early which makes the rest of the estimation hard, so it terminates early. In pa
 when using interval timing. One should
 make a couple of runs to ensure they yield reasonably equal results.
 }
+\examples{
+data(durdata)
+head(durdata)
+Fit <- mphcrm(d ~ x1+x2|alpha, data=durdata, id=id, durvar=duration,
+     state=alpha+1,risksets=list(c(1,2),1),
+     control=mphcrm.control(threads=1,iters=2))
+best <- Fit[[1]]
+summary(best)
+}
+\seealso{
+\code{\link{datagen}}
+}

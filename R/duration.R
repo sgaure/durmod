@@ -110,6 +110,15 @@
 #' early which makes the rest of the estimation hard, so it terminates early. In particular
 #' when using interval timing. One should
 #' make a couple of runs to ensure they yield reasonably equal results.
+#' @examples
+#' data(durdata)
+#' head(durdata)
+#' Fit <- mphcrm(d ~ x1+x2|alpha, data=durdata, id=id, durvar=duration,
+#'      state=alpha+1,risksets=list(c(1,2),1),
+#'      control=mphcrm.control(threads=1,iters=2))
+#' best <- Fit[[1]]
+#' summary(best)
+#' @seealso \code{\link{datagen}}
 #' @export
 mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
                    timing=c('exact','interval','none'),
@@ -610,6 +619,16 @@ ml <- function(dataset,pset,control) {
 #'
 #' @param a
 #' a vector of parameters
+#' 
+#' @examples
+#' # Draw 5 parameters
+#' a <- rnorm(5)
+#' a
+#' # make 6 probabilities
+#' p <- a2p(a)
+#' p
+#' # convert back
+#' p2a(p)
 #' 
 #' @export
 a2p <- function(a) {b <- c(0,a); p <- exp(b)/sum(exp(b)); ifelse(is.na(p),1,p)}

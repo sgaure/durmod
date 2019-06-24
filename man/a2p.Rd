@@ -19,3 +19,14 @@ p2a(p)
 For \eqn{n+1} probabilities there are \eqn{n} parameters \eqn{a_j}, such that
 probability \eqn{P_i = \frac{a_i}{1+\sum_j a_j}}, where we assume that \eqn{a_0 = 0}.
 }
+\examples{
+# Draw 5 parameters
+a <- rnorm(5)
+a
+# make 6 probabilities
+p <- a2p(a)
+p
+# convert back
+p2a(p)
+
+}

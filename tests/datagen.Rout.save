@@ -16,6 +16,7 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > library(durmod)
+> data.table::setDTthreads(1)
 > set.seed(42)
 > dataset <- datagen(4000,1200)
 > print(dataset)
@@ -66,4 +67,4 @@ treatment 0.07120773 0.001129992 0.03361536
 > 
 > proc.time()
    user  system elapsed 
-  3.801   0.608   3.564 
+  3.678   0.579   3.516 

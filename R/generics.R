@@ -13,42 +13,6 @@ coef.mphcrm.pset <- function(object, ...) {
 }
 
 
-#' Convert a structured coefficient set to a vector
-#' @description
-#' \code{\link{mphcrm}} stores coefficients in a list, not in a vector. This is
-#' because they should be treated differently according to whether they are probabilibies
-#' proportional hazards, or coefficients for factor levels or ordinary covariates.
-#' \code{flatten} extracts them as a named vector. \code{unflatten} puts them back
-#' in structured form.
-#' @param x
-#' parameter set as typically found in \code{opt[[1]]\$par}, where \code{opt} is
-#' returned from \code{mphcrm}.
-#' @param exclude
-#' For internal use
-#' @export
-flatten <- function(x, exclude=attr(x,'exclude')) {
-  class(x) <- setdiff(class(x),'mphcrm.pset')
-  vec <- unlist(as.relistable(x))
-  # fix the names so more readable
-  # parset.t1.{pars,mu,facs}.x <- t1.x
-  newnames <- gsub('^parset\\.(.*)\\.(pars|mu|facs)\\.(.*)','\\1.\\3',names(vec))
-  names(vec) <- newnames
-
-  skel <- attr(vec,'skeleton')
-  class(skel) <- c('mphcrm.pset',class(skel))
-  attr(vec,'skeleton') <- skel
-  if(length(exclude) == 0) return(vec)
-  # remove the excluded parameters
-  exc <- sapply(exclude, function(ee) ee[[1]])
-  if(is.character(exc)) exc <- which(names(vec) %in% exc)
-  exc <- intersect(exc,seq_along(vec))
-  if(length(exc)==0) return(structure(vec,exclude=NULL))
-  vals <- vec[exc]
-  vec <- vec[-exc]
-  attr(vec,'skeleton') <- skel
-  exc <- structure(mapply(function(a,b) list(a,b), exc, vals,SIMPLIFY=FALSE), names=names(vals))
-  structure(vec,exclude=exc)
-}
 
 # There are four classes:
 # mphcrm.list, a list as returned from mphcrm
@@ -113,6 +77,47 @@ print.mphcrm.pset <- function(x, ...) {
   cat('\nProportional hazard distribution\n')
   print(round(mphdist(x),8))
 }
+
+#' Convert a structured coefficient set to a vector
+#' @description
+#' \code{\link{mphcrm}} stores coefficients in a list, not in a vector. This is
+#' because they should be treated differently according to whether they are probabilibies
+#' proportional hazards, or coefficients for factor levels or ordinary covariates.
+#' \code{flatten} extracts them as a named vector. \code{unflatten} puts them back
+#' in structured form.
+#' @details
+#' \code{flatten}/\code{unflatten} is just a thinly disguised \code{unlist}/\code{relist}, which
+#' uses slightly more readable names.
+#' @param x
+#' parameter set as typically found in \code{opt[[1]]\$par}, where \code{opt} is
+#' returned from \code{mphcrm}.
+#' @param exclude
+#' For internal use
+#' @export
+flatten <- function(x, exclude=attr(x,'exclude')) {
+  class(x) <- setdiff(class(x),'mphcrm.pset')
+  vec <- unlist(as.relistable(x))
+  # fix the names so more readable
+  # parset.t1.{pars,mu,facs}.x <- t1.x
+  newnames <- gsub('^parset\\.(.*)\\.(pars|mu|facs)\\.(.*)','\\1.\\3',names(vec))
+  names(vec) <- newnames
+
+  skel <- attr(vec,'skeleton')
+  class(skel) <- c('mphcrm.pset',class(skel))
+  attr(vec,'skeleton') <- skel
+  if(length(exclude) == 0) return(vec)
+  # remove the excluded parameters
+  exc <- sapply(exclude, function(ee) ee[[1]])
+  if(is.character(exc)) exc <- which(names(vec) %in% exc)
+  exc <- intersect(exc,seq_along(vec))
+  if(length(exc)==0) return(structure(vec,exclude=NULL))
+  vals <- vec[exc]
+  vec <- vec[-exc]
+  attr(vec,'skeleton') <- skel
+  exc <- structure(mapply(function(a,b) list(a,b), exc, vals,SIMPLIFY=FALSE), names=names(vals))
+  structure(vec,exclude=exc)
+}
+
 
 #' @rdname flatten
 #' @param flesh

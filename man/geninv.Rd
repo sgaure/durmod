@@ -14,3 +14,10 @@ geninv(X, tol = sqrt(.Machine$double.eps))
 \description{
 Moore-Penrose generalized inverse
 }
+\examples{
+# create a positive definite 5x5 matrix
+x <- crossprod(matrix(rnorm(25),5))
+# make it singular
+x[,2] <- x[,3]+x[,5]
+geninv(x)
+}
