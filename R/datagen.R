@@ -15,6 +15,7 @@
 #' The number of individuals in the dataset
 #' @param censor numeric. The total observation period.
 #' @examples
+#' data.table::setDTthreads(1)
 #' dataset <- datagen(4000,1200)
 #' print(dataset)
 #' risksets <- list(untreated=c(1,2), treated=c(1))

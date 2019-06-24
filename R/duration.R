@@ -305,7 +305,7 @@ mphcrm.callback <- local({
 
     if(fromwhere != 'full') return()
     tdiff <- timestr(difftime(now,lastfull,units='s'))
-    lastfull <<- now
+    assign('lastfull',now,environment(sys.function())) # 
     rc <- if(!is.null(opt$fisher)) rcond(opt$fisher) else NA
     grd <- if(!is.null(opt$gradient)) sqrt(sum(opt$gradient^2)) else NA
     p <- a2p(opt$par$pargs)
@@ -364,14 +364,15 @@ pointiter <- function(dataset,pset,control) {
       }
     },
     error=function(e) {
-      intr <<- TRUE; iopt <<- structure(opt,status=conditionMessage(e)); 
+      assign('intr',TRUE,environment(sys.function()))
+      assign('iopt',structure(opt,status=conditionMessage(e)),environment(sys.function()))
       if(!control$trap.interrupt) stop(e)
       warning(e, 'Error occured, returning most recent estimate')
     },
     interrupt=function(e) {
-      intr <<- TRUE
-      iopt <<- structure(opt,status='interrupted')
-      if(!control$trap.interrupt) stop(e)
+      assign('intr',TRUE,environment(sys.function()))
+      assign('iopt',structure(opt,status='interrupted'),environment(sys.function()))
+      if(!control$trap.interrupt) stop('interrupt')
  #     try(control$callback('interrupt', iopt, dataset, control))
       warning(e, "returning most recent estimate ")
     },

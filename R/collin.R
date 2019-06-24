@@ -11,11 +11,9 @@ collin <- function(mat,eps=NULL,weps=0.01) {
   N <- dim(mat)[1]
   nm <- colnames(mat)
   if(is.null(nm)) nm <- paste('var',1:N)
-  o <- options(warn=-1)
-  ch <- try(chol(mat,pivot=TRUE))
+  ch <- try(chol(mat,pivot=TRUE), silent=TRUE)
   if(inherits(ch,'try-error')) stop("Can't check for multicollinearities")
   pivot <- attr(ch,'pivot')
-  options(o)
 
   if(is.null(eps)) {
     rank <- attr(ch,'rank')

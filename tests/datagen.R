@@ -1,4 +1,5 @@
 library(durmod)
+data.table::setDTthreads(1)
 set.seed(42)
 dataset <- datagen(4000,1200)
 print(dataset)
