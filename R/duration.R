@@ -205,7 +205,6 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   pset <- makeparset(dataset,1)
   # reset timer
   if(is.null(control$callback)) control$callback <- function(...) {}
-  assign('lastfull',Sys.time(),envir=environment(mphcrm.callback))
   if(!is.null(cluster)) {prepcluster(cluster,dataset,control); on.exit(cleancluster(cluster))}
   pointiter(dataset,pset,control)
 }
@@ -321,11 +320,8 @@ mphcrm.callback <- local({
 
 pointiter <- function(dataset,pset,control) {
   # optimize null model first
-#  usercallback <- control$callback
-#  control$callback <- function(...) {
-#    tt <- try(usercallback(...))
-#    if(inherits(tt,'try-error')) stop('Error in callback function ')
-#  }
+  assign('lastfull',Sys.time(),envir=environment(mphcrm.callback))
+
   arg0 <- flatten(pset)
   arg0[] <- 0
   pset <- unflatten(arg0)

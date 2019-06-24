@@ -5,6 +5,7 @@ prepcluster <- function(cluster,dset,control) {
   # make it temporarily 1-based, easier in R
   spellidx <- dset$spellidx+1
   K <- length(parallel::clusterCall(cluster, function() 1))
+  if(K == 1) {message('cluster of size 1 ignored'); return()}
 #  K <- 7
   # we should find a set of spells so that dset is evenly divided
   N <- spellidx[length(spellidx)]
@@ -52,8 +53,10 @@ prepcluster <- function(cluster,dset,control) {
 
   # Then add the id and spellidx in each entry
   for(i in seq_along(dsplit)) {
-    dsplit[[i]]$spellidx = spellidx[starts[i]:ends[i]] - spellidx[starts[i]]
+    sidx <- c(spellidx[starts[i]:ends[i]], spellidx[ends[i]+1])
+    dsplit[[i]]$spellidx <- sidx - sidx[1]  # zero based
   }
+
   # push the different datasets to the global environments on the cluster nodes
   parallel::clusterEvalQ(cluster, library(durmod))
   parallel::clusterApply(cluster,dsplit,function(dset) {assign('dset', dset, 
@@ -84,11 +87,11 @@ mphloglik <- local({
     mc <- as.call(c(list(quote(durmod::.cloglik)),quote(dset), args))
     ret <- parallel::clusterCall(cluster, eval, mc)
     # collect results
-    result <- Reduce('+',ret)
+    result <- Reduce(`+`,ret)
     # any gradient or fisher, collect them as well
     att <- attributes(ret[[1]])
     for(at in names(att)) {
-      attr(result,at) <- Reduce('+',lapply(ret,function(r) attr(r,at)))
+      attr(result,at) <- Reduce(`+`,lapply(ret,function(r) attr(r,at)))
     }
     result
   }
