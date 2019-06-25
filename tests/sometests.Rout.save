@@ -72,7 +72,7 @@ program 0.07120773 0.001129992 0.03361536
 > names(risksets) <- levels(state)
 > dataset[, f := factor(sample(1:6,.N,replace=TRUE))]
 > dataset[, g := factor(sample(1:4,.N,replace=TRUE))]
-> opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(alpha+1)+ID(id), data=dataset, 
+> opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(state)+ID(id), data=dataset, 
 +               risksets=risksets, control=mphcrm.control(threads=1,iters=1,callback=NULL))
 > options(digits=3)
 > summary(opt[[1]])
@@ -123,4 +123,4 @@ program 0.0461        0  0
 > 
 > proc.time()
    user  system elapsed 
-   4.41    1.25    3.89 
+   4.45    1.20    3.88 
