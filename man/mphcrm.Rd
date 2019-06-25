@@ -10,24 +10,31 @@ mphcrm(formula, data, risksets = NULL, timing = c("exact", "interval",
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.
-In a formula like \code{d ~ x1 + x2},
+In a formula like \code{d ~ x1 + x2 + ID(id) + D(dur) + C(job,alpha) + S(state)},
 the \code{d} is the transition which is taken, coded as an integer where \code{0} means
 no transition, and otherwise \code{d} is the number of the transition which is taken.
 \code{d} can also be a factor, in which case the level which is no transition must be named
-\code{"0"} or \code{"none"}.
+\code{"0"} or \code{"none"}. If \code{d} is an integer, the levels for transitions will be named
+\code{"t1"}, \code{"t2"}, .... And \code{"none"}.
 
 The \code{x1+x2} part is like in \code{\link{lm}}, i.e. ordinary covariates or factors.
 
-If the covariates differ among the transitions, a multi-part formula can be specified.
-E.g. \code{d ~ x1+x2 | x3+x4 | x5+x6}, in which case the first part (\code{x1+x2}) is common
-for all the transitions, the second part, \code{x3+x4}, is specific for the first transition,
-the third part is specific for the second transition, and so on. I.e. the covariates
-for transition 1 are \code{x1+x2+x3+x4}, whereas the covariates for transition 2 are \code{x1+x2+x5+x6}.}
+The \code{D()} specifies the covariate which holds the duration of each observation. The
+transition in \code{d} is assumed to be taken at the end of this period.
+
+The \code{ID()} part specifies the covariate which holds the individual identification.
+
+The \code{S()} specifies the covariate which holds an index into the \code{risksets} list.
+
+If the covariates differ among the transitions, one can specify covariates conditional on
+the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should only explain transition to
+job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
+Then name \code{job} refers to a level in \code{d}, the transition taken.}
 
 \item{data}{A data frame which contains the covariates.}
 
-\item{risksets}{A list of integer vectors. Each vector is a list of transitions, which risks are present for
-the observation.}
+\item{risksets}{A list of character vectors. Each vector is a list of transitions, which risks are present for
+the observation. The elements of the vectors should be levels of the covariate \code{d}.}
 
 \item{timing}{character. The timing in the duration model. Can be one of
 \itemize{
@@ -51,15 +58,6 @@ more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=
 
 When using a cluster, the \code{control[['threads']]} parameter is the number of threads on each node.
 Make sure you don't run too many threads on each node, that will slow things down dramatically.}
-
-\item{id}{The covariate which identifies an individual}
-
-\item{durvar}{The covariate which contains the length of the observation period. Can be a
-numeric, in which case all observations are assumed to have the same length. If missing, it
-is assumed to be 1.}
-
-\item{state}{A covariate which is an index into \code{risksets}, specifying for each observation
-which risks are present.}
 }
 \value{
 A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be

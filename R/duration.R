@@ -34,28 +34,28 @@
 #' 
 #' @param formula
 #' A formula specifying the covariates.
-#' In a formula like \code{d ~ x1 + x2},
+#' In a formula like \code{d ~ x1 + x2 + ID(id) + D(dur) + C(job,alpha) + S(state)},
 #' the \code{d} is the transition which is taken, coded as an integer where \code{0} means
 #' no transition, and otherwise \code{d} is the number of the transition which is taken.
 #' \code{d} can also be a factor, in which case the level which is no transition must be named
-#' \code{"0"} or \code{"none"}.
+#' \code{"0"} or \code{"none"}. If \code{d} is an integer, the levels for transitions will be named
+#' \code{"t1"}, \code{"t2"}, .... And \code{"none"}.
 #'
 #' The \code{x1+x2} part is like in \code{\link{lm}}, i.e. ordinary covariates or factors.
 #'
-#' If the covariates differ among the transitions, a multi-part formula can be specified.
-#' E.g. \code{d ~ x1+x2 | x3+x4 | x5+x6}, in which case the first part (\code{x1+x2}) is common
-#' for all the transitions, the second part, \code{x3+x4}, is specific for the first transition,
-#' the third part is specific for the second transition, and so on. I.e. the covariates
-#' for transition 1 are \code{x1+x2+x3+x4}, whereas the covariates for transition 2 are \code{x1+x2+x5+x6}.
-#' 
+#' The \code{D()} specifies the covariate which holds the duration of each observation. The
+#' transition in \code{d} is assumed to be taken at the end of this period.
+#'
+#' The \code{ID()} part specifies the covariate which holds the individual identification.
+#'
+#' The \code{S()} specifies the covariate which holds an index into the \code{risksets} list.
+#'
+#' If the covariates differ among the transitions, one can specify covariates conditional on
+#' the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should only explain transition to
+#' job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
+#' Then name \code{job} refers to a level in \code{d}, the transition taken. 
 #' @param data
 #' A data frame which contains the covariates.
-#' @param id
-#' The covariate which identifies an individual
-#' @param durvar
-#' The covariate which contains the length of the observation period. Can be a
-#' numeric, in which case all observations are assumed to have the same length. If missing, it
-#' is assumed to be 1.
 #' @param timing
 #' character. The timing in the duration model. Can be one of
 #' \itemize{
@@ -66,12 +66,9 @@
 #'   give up to early.
 #' \item "none" There is no timing, the transition occured, or not. A logit model is used.
 #' }
-#' @param state
-#' A covariate which is an index into \code{risksets}, specifying for each observation
-#' which risks are present.
 #' @param risksets
-#' A list of integer vectors. Each vector is a list of transitions, which risks are present for
-#' the observation.
+#' A list of character vectors. Each vector is a list of transitions, which risks are present for
+#' the observation. The elements of the vectors should be levels of the covariate \code{d}.
 #' @param subset
 #' For specifying a subset of the dataset, similar to \code{\link{lm}}.
 #' @param na.action
@@ -134,17 +131,18 @@ mphcrm <- function(formula,data,risksets=NULL,
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(model.frame)
 
-  dataset <- parseformula(F,mf)
+  dataset <- mymodelmatrix(F,mf)
 
   dataset$timing <- timing
   id <- dataset$id
+
   if(length(unique(id)) != length(rle(as.integer(id))$values)) {
     stop('dataset must be sorted on id')
   }
 
   # zero-based index of beginning of spells. padded with one after the last observation
-  dataset$spellidx <- c(0,which(diff(as.integer(id))!=0),length(id))
-  dataset$nspells <- length(dataset$spellidx)-1
+  dataset$spellidx <- c(0L,which(diff(as.integer(id))!=0),length(id))
+  dataset$nspells <- length(dataset$spellidx)-1L
 
   state <- dataset$state
   hasriskset <- !is.null(risksets)
@@ -157,8 +155,8 @@ mphcrm <- function(formula,data,risksets=NULL,
   if(hasriskset) {
     srange <- range(state)
     if(srange[1] != 1) stop('smallest state must be 1 (index into riskset)')
-    if(srange[2] != length(risksets)) {
-      stop(sprintf('max state is %d, but there are %d risksets',state[2],length(risksets)))
+    if(srange[2] > length(risksets)) {
+      stop(sprintf('max state is %d, but there are only %d risksets',state[2],length(risksets)))
     }
     # recode risksets from level names to integers
 
@@ -175,7 +173,6 @@ mphcrm <- function(formula,data,risksets=NULL,
     badtrans <- mapply(function(dd,r) dd != 0 && !(dd %in% r), d, risksets[state])
     if(any(badtrans)) {
       n <- which(badtrans)[1]
-      print(risksets)
       stop(sprintf("In observation %d(id=%d), a transition to %s is taken, but the riskset of the state(%d) does not allow it",
                    n, id[n], nm[d[n]], state[n]))
     }
@@ -637,7 +634,7 @@ makeparset <- function(dataset,npoints,oldset) {
 }
 
 
-parseformula <- function(formula,mf) {
+mymodelmatrix <- function(formula,mf) {
 
   # handle specials
   form <- formula
@@ -667,23 +664,25 @@ parseformula <- function(formula,mf) {
   if(is.null(indexD)) stop('Formula must have a duration specification D()')
   indexS <- spec$S
 
-  # replace variables and facs for ID, D, and S
+  # replace variables and facs for ID, D, and S, make indices a character, the position
+  # may chenge when we remove the C-stuff below
   vars[[indexD+1]] <- eval(vars[[indexD+1]], list(D=function(a) bquote(I(.(substitute(a))))))
+  indexD <- as.character(vars[indexD+1])
   vars[[indexID+1]] <- eval(vars[[indexID+1]], list(ID=function(a) bquote(I(.(substitute(a))))))
-  if(length(indexS)) 
+  indexID <- as.character(vars[indexID+1])
+  if(length(indexS)) {
     vars[[indexS+1]] <- eval(vars[[indexS+1]], list(S=function(a) bquote(I(.(substitute(a))))))
-
-  # remove the C variables
+    indexS <- as.character(vars[indexS+1])
+  }
+  # remove the C() variables
   if(length(indexC)) {
     vars <- vars[-indexC-1L]
     facs <- facs[-indexC,,drop=FALSE]
-  }
-
+  } 
   rownames(facs) <- as.character(vars[-1])
   attr(mt,'factors') <- facs
   attr(mt,'variables') <- vars
   attr(mt,'specials') <- NULL
-
   mf[[2L]] <- mt
   mf <- eval(mf)
   N <- nrow(mf)
@@ -714,15 +713,18 @@ parseformula <- function(formula,mf) {
   if(length(indexS)) 
     state <- mf[[indexS]]
 
-  vars <- attr(terms(formula),'variables')
 # then the conditional covariates
   if(length(extra) > 0) {
+    vars <- attr(terms(formula),'variables')
     nm <- levels(df)
     if(ztrans) nm <- nm[-1]
-    names(extra) <- match.arg(sapply(indexC, 
-                                     function(i) eval(vars[[i+1]],
-                                                      list(C=function(tr,spec) as.character(substitute(tr))))),
-                              nm)
+    trnames <- sapply(indexC, 
+                        function(i) eval(vars[[i+1]],
+                                         list(C=function(tr,spec) as.character(substitute(tr)))))
+    enm <- match(trnames, nm)
+    if(anyNA(enm)) stop(sprintf('transition to %s specified in conditional covariate, but no such transition exists.',
+                                trnames[is.na(enm)]))
+    names(extra) <- nm[enm]
   }
 
   # for each transition, make a model matrix for the numeric covariates,
