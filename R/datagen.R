@@ -3,14 +3,53 @@
 #' @description
 #' Generate a data table with example data
 #' @details
-#' The dataset simulates a labour market program. People entering the dataset are without a job,
-#' there are two transitions, either to \code{"exit"}, in which case the person leaves the dataset,
-#' or \code{"treatment"}. Those who have received treatment stays in the dataset, but may not
-#' receive a new treatment. This process continues until either the person exits, or the
-#' \code{"censor"} time is reached. There are two covariates, \code{"x1"} and \code{"x2"}, each with
-#' their own effect on the hazards for the transitions. In addition there is some hidden
-#' individual heterogeneity. It is this hidden heterogeneity which is modeled by the mixed proportional
-#' hazard distribution.
+#' The dataset simulates a labour market programme. People entering the dataset are without a job.
+#'
+#' They experience two hazards, i.e. probabilities per time period. They can either get a job and exit from
+#' the dataset, or they can enter a labour market programme, e.g. a subsidised job or similar, and remain
+#' in the dataset and possibly get a job later.
+#' In the terms of this package, there are two transitions, \code{"job"} and \code{"program"}.
+#' 
+#' The two hazards are influenced by covariates observed by the researcher, called \code{"x1"} and
+#' \code{"x2"}. In addition there are unobserved characteristics influencing the hazards. Being
+#' on a programme also influences the hazard to get a job. In the generated dataset, being on
+#' a programme is the indicator variable \code{alpha}. While on a programme, the only transition you can
+#' make is \code{"job"}. The other is to be estimated.
+#'
+#' The dataset is organized as a series of rows for each individual. Each row is a time period
+#' with constant covariates.
+#'
+#' The length of the time period is in the covariate \code{duration}.
+#'
+#' The transition being made at the end of the period is coded in the covariate \code{d}. This
+#' is an integer which is 0 if no transition occurs (e.g. if a covariate changes), it is 1 for
+#' the first transition, 2 for the second transition. It can also be a factor, in which case the
+#' level marking no transition must be called \code{"none"}.
+#'
+#' The covariate \code{alpha} is zero when unemployed, and 1 if on a programme. It is used
+#' for two purposes. It is used as an explanatory variable for transition to job, this yields
+#' a coefficient which can be interpreted as the effect of being on the programme. It is also
+#' used as a "state variable", as an index into a "risk set". I.e. when estimating, the
+#' \code{\link{mphcrm}} function must be told which risks/hazards are present. 
+#' When on a programme the \code{"toprogram"} transition can not be made. This is implemented
+#' by specifying a list of risksets and using \code{alpha+1} as an index into this set.
+#'
+#' The two are modeled as \eqn{exp(X \beta + \mu)}, where \eqn{X} is a matrix of covariates
+#' \eqn{\beta} is a vector of coefficients to be estimated, and \eqn{\mu} is an intercept. All of
+#' these quantities are transition specific. This yields an individual likelihood which we call
+#' \code{M_i(\mu)}. The idea behind the mixed proportional hazard model is to model the
+#' individual heterogeneity as a probability distribution of intercepts. We obtain the individual
+#' likelihood \eqn{L_i = \sum_j p_j M_i(\mu_j)}, and, thus, the likelihood \eqn{L = \sum_j L_j}.
+#'
+#' The likelihood is to be maximized over the parameter vectors \(\beta\) (one for each transition),
+#' the masspoints \eqn{\mu_j}, and probabilites \eqn{p_j}.
+#'
+#' The probability distribution is built up in steps. We start with a single masspoint, with
+#' probability 1. Then we search for another point with a small probability, and maximize the
+#' likelihood from there. We continue with adding masspoints until we no longer can improve
+#' the likelihood.
+#'
+#' 
 #' @param N integer.
 #' The number of individuals in the dataset
 #' @param censor numeric. The total observation period.
@@ -20,10 +59,10 @@
 #' data.table::setDTthreads(1)
 #' dataset <- datagen(5000,80)
 #' print(dataset)
-#' risksets <- list(untreated=c(1,2), treated=c(1))
+#' risksets <- list(c("job","program"), "job")
 #' # just two iterations to save time
-#' Fit <- mphcrm(d ~ x1+x2|alpha, data=dataset, id=id, durvar=duration,
-#'           state=alpha+1,risksets=risksets,
+#' Fit <- mphcrm(d ~ x1+x2 + ID(id) + D(duration) + S(alpha+1) + C(job,alpha),
+#'           data=dataset, risksets=risksets,
 #'           control=mphcrm.control(threads=1,iters=2))
 #' best <- Fit[[1]]
 #' print(best)
@@ -50,6 +89,6 @@ datagen <- function(N,censor=80) {
     genspell(x1,x2,ve,vp,censor)
   }, by=id]
   spells$d <- factor(spells$d,levels=0:2)
-  levels(spells$d) <- c('none','exit','treatment')
+  levels(spells$d) <- c('none','job','program')
   spells
 }

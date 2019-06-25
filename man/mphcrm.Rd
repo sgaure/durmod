@@ -4,9 +4,9 @@
 \alias{mphcrm}
 \title{Estimate a mixed proportional hazard model}
 \usage{
-mphcrm(formula, data, id, durvar, state, risksets = NULL,
-  timing = c("exact", "interval", "none"), subset, na.action,
-  control = mphcrm.control(), cluster = NULL)
+mphcrm(formula, data, risksets = NULL, timing = c("exact", "interval",
+  "none"), subset, na.action, control = mphcrm.control(),
+  cluster = NULL)
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.
@@ -25,15 +25,6 @@ the third part is specific for the second transition, and so on. I.e. the covari
 for transition 1 are \code{x1+x2+x3+x4}, whereas the covariates for transition 2 are \code{x1+x2+x5+x6}.}
 
 \item{data}{A data frame which contains the covariates.}
-
-\item{id}{The covariate which identifies an individual}
-
-\item{durvar}{The covariate which contains the length of the observation period. Can be a
-numeric, in which case all observations are assumed to have the same length. If missing, it
-is assumed to be 1.}
-
-\item{state}{A covariate which is an index into \code{risksets}, specifying for each observation
-which risks are present.}
 
 \item{risksets}{A list of integer vectors. Each vector is a list of transitions, which risks are present for
 the observation.}
@@ -60,6 +51,15 @@ more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=
 
 When using a cluster, the \code{control[['threads']]} parameter is the number of threads on each node.
 Make sure you don't run too many threads on each node, that will slow things down dramatically.}
+
+\item{id}{The covariate which identifies an individual}
+
+\item{durvar}{The covariate which contains the length of the observation period. Can be a
+numeric, in which case all observations are assumed to have the same length. If missing, it
+is assumed to be 1.}
+
+\item{state}{A covariate which is an index into \code{risksets}, specifying for each observation
+which risks are present.}
 }
 \value{
 A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be
@@ -124,9 +124,8 @@ make a couple of runs to ensure they yield reasonably equal results.
 \examples{
 data(durdata)
 head(durdata)
-Fit <- mphcrm(d ~ x1+x2|alpha, data=durdata, id=id, durvar=duration,
-     state=alpha+1,risksets=list(c(1,2),1),
-     control=mphcrm.control(threads=1,iters=2))
+Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
+     risksets=list(c('job','program'),'job'), control=mphcrm.control(threads=1,iters=2))
 best <- Fit[[1]]
 summary(best)
 }

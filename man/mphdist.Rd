@@ -28,20 +28,22 @@ If given a list of results, extracts the
 first in the list.}
 }
 \value{
-matrix where there is one row for each masspoint. The first consists of the probabilities,
-the other columns are the hazards for each transition.
+A matrix.
 }
 \description{
 Various functions for extracting the proportional hazard distribution.
+
+\code{mphdist} extracts the hazard distribution.
+
+\code{mphdist.log} extracts the log hazard distribution.
+
+\code{mphmoments} returns the first and second moments of the hazard distribution.
 
 \code{mphmoments.log} returns the first and second moments of the log hazard distribution.
 
 \code{mphcovs} returns the variance/covariance matrix of the hazard distribution.
 
-\code{mphcovs} returns the variance/covariance matrix of the log hazard distribution.
-}
-\details{
-\code{mphmoments} returns the first and second moments of the hazard distribution.
+\code{mphcovs.log} returns the variance/covariance matrix of the log hazard distribution.
 }
 \examples{
 # load a dataset and a precomputed fitted model

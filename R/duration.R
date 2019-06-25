@@ -113,21 +113,19 @@
 #' @examples
 #' data(durdata)
 #' head(durdata)
-#' Fit <- mphcrm(d ~ x1+x2|alpha, data=durdata, id=id, durvar=duration,
-#'      state=alpha+1,risksets=list(c(1,2),1),
-#'      control=mphcrm.control(threads=1,iters=2))
+#' Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
+#'      risksets=list(c('job','program'),'job'), control=mphcrm.control(threads=1,iters=2))
 #' best <- Fit[[1]]
 #' summary(best)
 #' @seealso \code{\link{datagen}}
 #' @export
-mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
+mphcrm <- function(formula,data,risksets=NULL,
                    timing=c('exact','interval','none'),
                    subset, na.action, control=mphcrm.control(),cluster=NULL) {
+
   timing <- match.arg(timing)
   F <- Formula::as.Formula(formula)
-  if(missing(id)) stop('id must be specified')
   environment(F) <- environment(formula)
-  # d ~ x + y | z | w ...
 
   # create model frame
   mf <- match.call(expand.dots=TRUE)
@@ -135,58 +133,26 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(model.frame)
-  mf[[2L]] <- F
-
-  # add id, durvar and state to formula to get them into model frame to make subset work
-  form <- F
-  id.v <- bquote(I(.(substitute(id))))
-  form <- update(form, as.formula(bquote(. ~ . + .(id.v))))
-  if(!missing(durvar)) {
-    durvar.v <- bquote(I(.(substitute(durvar))))
-    form <- update(form, as.formula(bquote(. ~ . + .(durvar.v))))
-  }
-  if(!missing(state)) {
-    state.v <- bquote(I(.(substitute(state))))
-    form <- update(form, as.formula(bquote(. ~ . + .(state.v))))
-  }
-  mf[[2L]] <- form
-  mf <- eval.parent(mf)
-  
-  N <- nrow(mf)
 
   dataset <- parseformula(F,mf)
 
   dataset$timing <- timing
-  id <- factor(eval(as.name(deparse(id.v)),mf,environment(F)))
-
-  if(length(id) != N) stop('id must have length ',N,' (',as.character(id),')')
+  id <- dataset$id
   if(length(unique(id)) != length(rle(as.integer(id))$values)) {
     stop('dataset must be sorted on id')
   }
-  dataset$id <- id
+
   # zero-based index of beginning of spells. padded with one after the last observation
   dataset$spellidx <- c(0,which(diff(as.integer(id))!=0),length(id))
   dataset$nspells <- length(dataset$spellidx)-1
-  if(missing(durvar)) {
-    duration <- 1
-  } else {
-    duration <- as.numeric(eval(as.name(deparse(durvar.v)),mf,environment(F)))
-  }
 
-  if(length(duration) != N && length(duration) != 1) {
-    stop('Duration must either be a constant or a vector of length ',N,' (',as.character(durvar),')')
-  }
-  if(length(duration) == 1) duration <- rep(duration,N)
-  dataset$duration <- duration
-
+  state <- dataset$state
   hasriskset <- !is.null(risksets)
-  if(hasriskset && missing(state)) warning("riskset is specified, but no state")
-  if(missing(state)) {
+  if(hasriskset && is.null(state)) warning("riskset is specified, but no state S()")
+  if(is.null(state)) {
     state <- 0L
     hasriskset <- FALSE
-  } else {
-    state <- eval(as.name(deparse(state.v)),mf,environment(F))
-  }
+  } 
   
   if(hasriskset) {
     srange <- range(state)
@@ -194,16 +160,25 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
     if(srange[2] != length(risksets)) {
       stop(sprintf('max state is %d, but there are %d risksets',state[2],length(risksets)))
     }
+    # recode risksets from level names to integers
+
+    nm <- levels(dataset$df)
+    if(dataset$ztrans) nm <- nm[-1]
+    risksets <- lapply(risksets, function(set) {
+      ind <- match(set,nm)
+      if(anyNA(ind)) stop(sprintf('Non-existent transition %s in risk set',set[is.na(ind)]))
+      ind
+    })
+    dataset$df <- dataset$ztrans <- NULL  # save memory
     # check if transitions are taken which are not in the riskset
-    if(0 %in% unlist(risksets)) stop("0 can't be in risk set")
     d <- dataset[['d']]
     badtrans <- mapply(function(dd,r) dd != 0 && !(dd %in% r), d, risksets[state])
     if(any(badtrans)) {
       n <- which(badtrans)[1]
-      stop(sprintf("In observation %d(id=%d), a transition to %d is taken, but the riskset of the state(%d) does not allow it",
-                   n, id[n], d[n], state[n]))
+      print(risksets)
+      stop(sprintf("In observation %d(id=%d), a transition to %s is taken, but the riskset of the state(%d) does not allow it",
+                   n, id[n], nm[d[n]], state[n]))
     }
-    dataset$state <- state
     dataset$riskset <- risksets
   } else {
     dataset$state <- 0
@@ -215,7 +190,8 @@ mphcrm <- function(formula,data,id,durvar,state,risksets=NULL,
   # reset timer
   if(is.null(control$callback)) control$callback <- function(...) {}
   if(!is.null(cluster)) {prepcluster(cluster,dataset,control); on.exit(cleancluster(cluster))}
-  pointiter(dataset,pset,control)
+  z <- pointiter(dataset,pset,control)
+  structure(z,call=match.call())
 }
 
 #' Control parameters for mphcrm
@@ -662,6 +638,56 @@ makeparset <- function(dataset,npoints,oldset) {
 
 
 parseformula <- function(formula,mf) {
+
+  # handle specials
+  form <- formula
+
+  mt <- terms(formula, specials=c('ID','D','S','C'))
+  spec <- attr(mt,'specials')
+  indexC <- spec$C
+  vars <- attr(mt,'variables')
+  facs <- attr(mt,'factors')
+
+  extra <- sapply(indexC, function(i) eval(vars[[i+1]],list(C=function(tr,spec) substitute(spec))))
+  if(length(extra)) {
+    # update formula with variables from conditional C-specials
+    for(e in extra) form <- update(form,as.formula(bquote(. ~ . + .(e))))
+    mt <- terms(form,specials=c('ID','D','S','C'))
+    vars <- attr(mt,'variables')
+    facs <- attr(mt,'factors')
+    spec <- attr(mt,'specials')
+
+    indexC <- spec$C
+  }
+
+  # now we update the terms. Replace ID, D, and S -terms with I()-terms
+  indexID <- spec$ID
+  if(is.null(indexID)) stop('Formula must have an ID-specification')
+  indexD <- spec$D
+  if(is.null(indexD)) stop('Formula must have a duration specification D()')
+  indexS <- spec$S
+
+  # replace variables and facs for ID, D, and S
+  vars[[indexD+1]] <- eval(vars[[indexD+1]], list(D=function(a) bquote(I(.(substitute(a))))))
+  vars[[indexID+1]] <- eval(vars[[indexID+1]], list(ID=function(a) bquote(I(.(substitute(a))))))
+  if(length(indexS)) 
+    vars[[indexS+1]] <- eval(vars[[indexS+1]], list(S=function(a) bquote(I(.(substitute(a))))))
+
+  # remove the C variables
+  if(length(indexC)) {
+    vars <- vars[-indexC-1L]
+    facs <- facs[-indexC,,drop=FALSE]
+  }
+
+  rownames(facs) <- as.character(vars[-1])
+  attr(mt,'factors') <- facs
+  attr(mt,'variables') <- vars
+  attr(mt,'specials') <- NULL
+
+  mf[[2L]] <- mt
+  mf <- eval(mf)
+  N <- nrow(mf)
+
   orig.d <- model.response(mf)
   df <- as.factor(orig.d)
   # put the zero/none/null/0 level first for conversion to integer
@@ -675,27 +701,56 @@ parseformula <- function(formula,mf) {
   if(!is.factor(orig.d)) levels(df) <- paste('t',levels(df),sep='')
   d <- as.integer(df)-ztrans
 
-  nrhs <- length(formula)[2]
-  if(nrhs > nlevels(df)) stop("There are more parts in the formula than there are transitions")
-
-
   # analyze the formula to figure out which
   # covariates explain which transitions
   # split off factors
 
   transitions <- nlevels(df)-ztrans
-  mt <- terms(mf)
-  cls <- attr(mt,'dataClasses')
+  cls <- attr(terms(mf),'dataClasses')
+
+  duration <- mf[[indexD]]
+  id <- mf[[indexID]]
+  state <- NULL
+  if(length(indexS)) 
+    state <- mf[[indexS]]
+
+  vars <- attr(terms(formula),'variables')
+# then the conditional covariates
+  if(length(extra) > 0) {
+    nm <- levels(df)
+    if(ztrans) nm <- nm[-1]
+    names(extra) <- match.arg(sapply(indexC, 
+                                     function(i) eval(vars[[i+1]],
+                                                      list(C=function(tr,spec) as.character(substitute(tr))))),
+                              nm)
+  }
 
   # for each transition, make a model matrix for the numeric covariates,
   # and a list of factors
-  data <- lapply(2:(transitions+1), function(t) {
-    rhs <- c(1,t)
-    if(t > nrhs) rhs <- 1
-    ff <- Formula::as.Formula(formula(formula,rhs=rhs,lhs=0))
-    mt <- terms(ff,keep.order=TRUE)
+  data <- lapply(seq_len(transitions), function(t) {
+    
+    # find the formula for
+    # this transition. Add in all the conditional covariates for this transition
+    tnam <- levels(df)[t+ztrans]
+    if(tnam %in% names(extra)) {
+      ff <- update(formula, as.formula(bquote(. ~ . + .(extra[[tnam]]))))
+    } else {
+      ff <- formula
+    }
+
+    # remove all the specials from the terms object
+    mt <- terms(ff,specials=c('ID','D','S','C'),keep.order=TRUE)
+    index <- unique(unlist(attr(mt,'specials')))
+    attr(mt,'variables') <- attr(mt,'variables')[-index-1L]
+    attr(mt,'factors') <- attr(mt,'factors')[-index,, drop=FALSE]
+    attr(mt,'specials') <- NULL
+    attr(mt,'order') <- attr(mt,'order')[-index]
+
     fact <- attr(mt,'factors')
     # now, filter out those terms which are neither factors, nor interactions with factors
+    keep <- colSums(fact) > 0
+    fact <- fact[,keep,drop=FALSE]
+    attr(mt,'term.labels') <- attr(mt,'term.labels')[keep]
 
     keep <- unlist(lapply(colnames(fact), function(lab) {
       contains <- rownames(fact)[fact[,lab] > 0]
@@ -706,7 +761,6 @@ parseformula <- function(formula,mf) {
     attr(mt,'factors') <- fact[,keep,drop=FALSE]
     attr(mt,'intercept') <- 0
     mat <- model.matrix(mt,mf)
-
 # then the factor related stuff
 
     faclist <- lapply(colnames(fact), function(term) {
@@ -749,6 +803,6 @@ parseformula <- function(formula,mf) {
     list(mat=t(mat),faclist=faclist)
   })
   names(data) <- levels(df)[-1]
-  dataset <- list(data=data, d=d, nobs=nrow(mf))
+  dataset <- list(data=data, d=d, nobs=nrow(mf), df=df,ztrans=ztrans,duration=duration,id=id,state=state)
   dataset
 }

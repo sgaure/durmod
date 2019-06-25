@@ -38,14 +38,15 @@ nazero <- function(x) ifelse(is.na(x),0,x)
 #'
 #' @description
 #' Various functions for extracting the proportional hazard distribution.
+#'
+#' \code{mphdist} extracts the hazard distribution.
 #' @param pset
 #' a parameter set of class \code{"mphcrm.pset"}, typically
 #' \code{opt[[1]]$par}, where \code{opt} is returned from \code{\link{mphcrm}}.
 #' If given a list of results, extracts the
 #' first in the list.
 #' @return
-#' matrix where there is one row for each masspoint. The first consists of the probabilities,
-#' the other columns are the hazards for each transition.
+#' A matrix.
 #' @examples
 #' # load a dataset and a precomputed fitted model
 #' data(durdata)
@@ -69,6 +70,7 @@ mphdist <- function(pset) {
 
 #' Extract the mixed proportional log hazard distribution
 #' @rdname mphdist
+#' @description \code{mphdist.log} extracts the log hazard distribution.
 #' @export
 mphdist.log <- function(pset) {
   if(inherits(pset,'mphcrm.list')) pset <- pset[[1]]$par
@@ -85,7 +87,7 @@ mphdist.log <- function(pset) {
 
 #' Extract moments of the mixed proportional hazard distribution
 #' @rdname mphdist
-#' @details
+#' @description
 #' \code{mphmoments} returns the first and second moments of the hazard distribution.
 #' @export
 mphmoments <- function(pset) {
@@ -123,7 +125,7 @@ mphcovs <- function(pset) {
 #' Extract covariance matrix of the proportional hazard distribution
 #' @rdname mphdist
 #' @description
-#' \code{mphcovs} returns the variance/covariance matrix of the log hazard distribution.
+#' \code{mphcovs.log} returns the variance/covariance matrix of the log hazard distribution.
 #' @export
 mphcovs.log <- function(pset) {
   dist <- mphdist.log(pset)
