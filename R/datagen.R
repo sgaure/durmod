@@ -37,11 +37,11 @@
 #' The two are modeled as \eqn{exp(X \beta + \mu)}, where \eqn{X} is a matrix of covariates
 #' \eqn{\beta} is a vector of coefficients to be estimated, and \eqn{\mu} is an intercept. All of
 #' these quantities are transition specific. This yields an individual likelihood which we call
-#' \code{M_i(\mu)}. The idea behind the mixed proportional hazard model is to model the
+#' \eqn{M_i(\mu)}. The idea behind the mixed proportional hazard model is to model the
 #' individual heterogeneity as a probability distribution of intercepts. We obtain the individual
 #' likelihood \eqn{L_i = \sum_j p_j M_i(\mu_j)}, and, thus, the likelihood \eqn{L = \sum_j L_j}.
 #'
-#' The likelihood is to be maximized over the parameter vectors \(\beta\) (one for each transition),
+#' The likelihood is to be maximized over the parameter vectors \eqn{\beta} (one for each transition),
 #' the masspoints \eqn{\mu_j}, and probabilites \eqn{p_j}.
 #'
 #' The probability distribution is built up in steps. We start with a single masspoint, with

@@ -79,7 +79,6 @@ inline double log1pexp(double x) {
 
 inline double log0(double x) { return (x < 0) ? -DBL_MAX : log(x); }
 
-//      computeloglik(d[i], lh, mup, npoints, llspell)
 inline void obsloglik(const int tr, const Timing timing, const double *lh, double dur,
 		      double **mup, const int npoints, int transitions,
 		      const bool *riskmask,
@@ -118,7 +117,7 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
 // compute gradient
 inline void gobsloglik(const int tr, const Timing timing, const double *lh, double dur, int obs,
 		       double **mup, const int npoints, int transitions,
-		       int npars, int *nfacs,
+		       int npars, int *nfacs, int *faclevels,
 		       const bool *riskmask,
 		       int *nvars,
 		       double **matp,
@@ -126,7 +125,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 		       double *dllspell) {
   int inipos = 0;
   const int t = tr-1;
-  for(int s = 0; s < t; s++) inipos += nvars[s] + nfacs[s] + npoints;
+  for(int s = 0; s < t; s++) inipos += nvars[s] + faclevels[s] + npoints;
   const double *tmat = (t>=0) ? &matp[t][obs*nvars[t]] : 0;
 
   for(int j = 0; j < npoints; j++) {
@@ -143,7 +142,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
     double *dll = &dllspell[j*npars];
     int pos = 0;
     for(int tt = 0; tt < transitions; tt++) {
-      if(riskmask && !riskmask[tt]) {pos += nvars[tt]+nfacs[tt]+npoints;continue;}
+      if(riskmask && !riskmask[tt]) {pos += nvars[tt]+faclevels[tt]+npoints;continue;}
       const double haz = exp(lh[tt] + mup[tt][j]);
       const double *mat = &matp[tt][obs*nvars[tt]];
 
@@ -162,7 +161,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       // loop through the factors for this transition
       for(int k = 0; k < nfacs[tt]; k++) {
 	const int fval = fac[k].val[obs];
-	if(fval <= 0) {pos += fac[k].nlevels; continue;}
+	if(fval <= 0 || ISNAN(fval)) {pos += fac[k].nlevels; continue;}
 	const double f = (fac[k].x != 0) ? fac[k].x[obs] : 1.0;
 	switch(timing) {
 	case exact:
@@ -216,7 +215,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       const FACTOR *fac = factors[t];
       for(int jj = 0; jj < nfacs[t]; jj++) {
 	const int fval = fac[jj].val[obs];
-	if(fval <= 0) {pos += fac[jj].nlevels; continue;};  // skip NA-levels, i.e. reference
+	if(fval <= 0 || ISNAN(fval)) {pos += fac[jj].nlevels; continue;};  // skip NA-levels, i.e. reference
 	double *x = fac[jj].x;
 	double f = (x != 0) ? x[obs] : 1.0;
 	switch(timing) {
@@ -552,9 +551,9 @@ NumericVector cloglik(List dataset, List pset, List control,
 	const FACTORPAR *fpar = facpars[t];
 	for(int j = 0; j < nfacs[t]; j++) {
 	  const int fval = fac[j].val[i];
-	  if(fval <= 0) continue;  // skip NA-levels, i.e. reference
-	  double *x = fac[j].x;
-	  if(x != 0) lh[t] += fpar[j].par[fval-1] * x[i]; else lh[t] += fpar[j].par[fval-1];
+	  if(fval <= 0 || ISNAN(fval)) continue;  // skip NA-levels, i.e. reference
+	  double x = (fac[j].x == 0) ? 1.0 : fac[j].x[i];
+	  lh[t] += fpar[j].par[fval-1] * x;
 	}
       }
 
@@ -562,7 +561,7 @@ NumericVector cloglik(List dataset, List pset, List control,
       obsloglik(d[i], timing, lh, duration[i], mup, npoints, transitions, riskmask, llspell);
       // update dllspell with the gradient of the observation log likelihood
       if(dograd) gobsloglik(d[i], timing, lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
-			    riskmask, nvars, matp, factors, dllspell);
+			    faclevels, riskmask, nvars, matp, factors, dllspell);
     }
 
     // We have collected the loglikelihood of a spell, one for each masspoint

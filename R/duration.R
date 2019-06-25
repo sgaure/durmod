@@ -151,43 +151,48 @@ mphcrm <- function(formula,data,risksets=NULL,
     state <- 0L
     hasriskset <- FALSE
   } 
-  
+
   if(hasriskset) {
     srange <- range(state)
     if(srange[1] != 1) stop('smallest state must be 1 (index into riskset)')
     if(srange[2] > length(risksets)) {
-      stop(sprintf('max state is %d, but there are only %d risksets',state[2],length(risksets)))
+      stop(sprintf('max state is %d, but there are only %d risksets\n',srange[2],length(risksets)))
     }
     # recode risksets from level names to integers
-
     nm <- levels(dataset$df)
     if(dataset$ztrans) nm <- nm[-1]
     risksets <- lapply(risksets, function(set) {
       ind <- match(set,nm)
-      if(anyNA(ind)) stop(sprintf('Non-existent transition %s in risk set',set[is.na(ind)]))
+      if(anyNA(ind)) stop(sprintf('Non-existent transition %s in risk set\n',set[is.na(ind)]))
       ind
     })
+
     dataset$df <- dataset$ztrans <- NULL  # save memory
     # check if transitions are taken which are not in the riskset
     d <- dataset[['d']]
+
     badtrans <- mapply(function(dd,r) dd != 0 && !(dd %in% r), d, risksets[state])
     if(any(badtrans)) {
       n <- which(badtrans)[1]
       stop(sprintf("In observation %d(id=%d), a transition to %s is taken, but the riskset of the state(%d) does not allow it",
                    n, id[n], nm[d[n]], state[n]))
     }
+
     dataset$riskset <- risksets
   } else {
     dataset$state <- 0
     dataset$riskset < list()
   }
   
-    
+
   pset <- makeparset(dataset,1)
+
   # reset timer
   if(is.null(control$callback)) control$callback <- function(...) {}
   if(!is.null(cluster)) {prepcluster(cluster,dataset,control); on.exit(cleancluster(cluster))}
+
   z <- pointiter(dataset,pset,control)
+
   structure(z,call=match.call())
 }
 
@@ -684,10 +689,12 @@ mymodelmatrix <- function(formula,mf) {
   attr(mt,'variables') <- vars
   attr(mt,'specials') <- NULL
   mf[[2L]] <- mt
-  mf <- eval(mf)
+
+  mf <- eval.parent(mf)
   N <- nrow(mf)
 
   orig.d <- model.response(mf)
+
   df <- as.factor(orig.d)
   # put the zero/none/null/0 level first for conversion to integer
   # i.e. ensure that the no-transition is zero
@@ -722,7 +729,7 @@ mymodelmatrix <- function(formula,mf) {
                         function(i) eval(vars[[i+1]],
                                          list(C=function(tr,spec) as.character(substitute(tr)))))
     enm <- match(trnames, nm)
-    if(anyNA(enm)) stop(sprintf('transition to %s specified in conditional covariate, but no such transition exists.',
+    if(anyNA(enm)) stop(sprintf('transition to %s specified in conditional covariate, but no such transition exists.\n',
                                 trnames[is.na(enm)]))
     names(extra) <- nm[enm]
   }
@@ -800,6 +807,7 @@ mymodelmatrix <- function(formula,mf) {
       }
       iaf
     })
+
     names(faclist) <- colnames(fact)
     faclist <- Filter(Negate(is.null), faclist)
     list(mat=t(mat),faclist=faclist)
