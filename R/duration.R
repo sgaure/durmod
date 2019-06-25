@@ -70,8 +70,11 @@
 #' \item "none" There is no timing, the transition occured, or not. A logit model is used.
 #' }
 #' @param risksets
-#' A list of character vectors. Each vector is a list of transitions, which risks are present for
-#' the observation. The elements of the vectors should be levels of the covariate \code{d}.
+#' A list of character vectors. Each vector is a list of transitions, i.e. which risks are present for
+#' the observation. The elements of the vectors must be levels of the covariate which is the
+#' left hand side of the \code{formula}.
+#' If the state variable in the formula is a factor, the \code{risksets} argument should be a named list, with
+#' names matching the levels of \code{state}.
 #' @param subset
 #' For specifying a subset of the dataset, similar to \code{\link{lm}}.
 #' @param na.action
@@ -113,8 +116,9 @@
 #' @examples
 #' data(durdata)
 #' head(durdata)
+#' risksets <- list(c('job','program'), c('job'))
 #' Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
-#'      risksets=list(c('job','program'),'job'), control=mphcrm.control(threads=1,iters=2))
+#'      risksets=risksets, control=mphcrm.control(threads=1,iters=2))
 #' best <- Fit[[1]]
 #' summary(best)
 #' @seealso A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}}.
@@ -153,12 +157,20 @@ mphcrm <- function(formula,data,risksets=NULL,
   if(is.null(state)) hasriskset <- FALSE
 
   if(hasriskset) {
-    srange <- range(state)
-    if(srange[1] != 1) stop('smallest state must be 1 (index into riskset)')
-    if(srange[2] > length(risksets)) {
-      stop(sprintf('max state is %d, but there are only %d risksets\n',srange[2],length(risksets)))
+    if(is.factor(state)) {
+      m <- match(levels(state), names(risksets))
+      if(anyNA(m)) stop(sprintf('level %s of state is not in the riskset names\n',levels(state)[is.na(m)]))
+      # recode state to integer
+      state <- m[state]
+      dataset$state <- state
+    } else {
+      srange <- range(state)
+      if(srange[1] != 1) stop('smallest state must be 1 (index into riskset)')
+      if(srange[2] > length(risksets)) {
+        stop(sprintf('max state is %d, but there are only %d risksets\n',srange[2],length(risksets)))
+      }
     }
-    # recode risksets from level names to integers
+    # recode risksets from transition level names to integers
     tlevels <- dataset$tlevels
     risksets <- lapply(risksets, function(set) {
       ind <- match(set,tlevels)
@@ -178,7 +190,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 
     dataset$riskset <- risksets
   } else {
-    dataset$state <- 0
+    dataset$state <- 0L
     dataset$riskset < list()
   }
   
@@ -667,9 +679,10 @@ mymodelmatrix <- function(formula,mf) {
   duration <- as.numeric(mf[[as.character(Ilist$D)]])
   id <- as.integer(mf[[as.character(Ilist$ID)]])
   state <- NULL
-  if(length(Ilist$S)) 
-    state <- as.integer(mf[[as.character(Ilist$S)]])
-
+  if(length(Ilist$S)) {
+    state <- mf[[as.character(Ilist$S)]]
+    if(!is.factor(state)) state <- as.integer(state)
+  }
   # and the repsonse, convert to factor with appropriate levels
   orig.d <- model.response(mf)
   df <- as.factor(orig.d)

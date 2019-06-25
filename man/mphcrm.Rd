@@ -36,8 +36,11 @@ Then name \code{job} refers to a level in \code{d}, the transition taken.}
 
 \item{data}{A data frame which contains the covariates.}
 
-\item{risksets}{A list of character vectors. Each vector is a list of transitions, which risks are present for
-the observation. The elements of the vectors should be levels of the covariate \code{d}.}
+\item{risksets}{A list of character vectors. Each vector is a list of transitions, i.e. which risks are present for
+the observation. The elements of the vectors must be levels of the covariate which is the
+left hand side of the \code{formula}.
+If the state variable in the formula is a factor, the \code{risksets} argument should be a named list, with
+names matching the levels of \code{state}.}
 
 \item{timing}{character. The timing in the duration model. Can be one of
 \itemize{
@@ -125,8 +128,9 @@ make a couple of runs to ensure they yield reasonably equal results.
 \examples{
 data(durdata)
 head(durdata)
+risksets <- list(c('job','program'), c('job'))
 Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
-     risksets=list(c('job','program'),'job'), control=mphcrm.control(threads=1,iters=2))
+     risksets=risksets, control=mphcrm.control(threads=1,iters=2))
 best <- Fit[[1]]
 summary(best)
 }
