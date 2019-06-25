@@ -1,0 +1,126 @@
+
+R Under development (unstable) (2019-06-25 r76738) -- "Unsuffered Consequences"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(durmod)
+> data.table::setDTthreads(1)
+> set.seed(42)
+> dataset <- datagen(4000,1200)
+> print(dataset)
+        id         x1         x2 alpha       d  duration
+   1:    1  1.3709584 -0.1418087     0     job  1.123083
+   2:    2  0.2984146 -1.5918203     0    none 14.543001
+   3:    2  0.2984146 -1.5918203     0     job  4.139920
+   4:    3  0.3631284 -0.3255406     0 program 22.891390
+   5:    3  0.3631284 -0.3255406     1     job  5.809067
+  ---                                                   
+8806: 3998  1.8651969  0.5667597     1    none  7.818901
+8807: 3998  1.8651969  0.5667597     1     job  7.991203
+8808: 3999  0.8504394  1.3854584     0 program  2.352759
+8809: 3999  0.8504394  1.3854584     1     job  4.587245
+8810: 4000 -0.4080361 -1.1617422     0     job  1.589720
+> risksets <- list(c('job','program'), c('job'))
+> # just two iterations to save time
+> opt <- mphcrm(d ~ x1+x2+C(job,alpha)+D(duration)+S(alpha+1)+ID(id), data=dataset, risksets=risksets,
++               control=mphcrm.control(threads=1,iters=2,callback=NULL))
+> best <- opt[[1]]
+> print(best)
+Estimate with 2 points, log-likelihood: -21023.3863
+    job.x1     job.x2  job.alpha program.x1 program.x2      pargs 
+ 0.7566441 -0.7417405 -0.2662034  0.8625342  0.3759226 -0.9135190 
+
+Proportional hazard distribution
+              prob        job    program
+point  1 0.7137197 0.15492189 0.09249743
+point  2 0.2862803 0.01894386 0.01813079
+> summary(best)
+$loglik
+[1] -21023.39
+
+$coefs
+                value          se          t      Pr(>|t|)
+job.x1      0.7566441 0.009642982  78.465779  0.000000e+00
+job.x2     -0.7417405 0.013262129 -55.929216  0.000000e+00
+job.alpha  -0.2662034 0.034961284  -7.614234  2.926374e-14
+program.x1  0.8625342 0.023189411  37.195174 2.094111e-281
+program.x2  0.3759226 0.023396286  16.067617  2.790888e-57
+pargs      -0.9135190 0.054778830 -16.676497  1.693323e-61
+
+$moments
+              mean    variance         sd
+job     0.11599406 0.003777954 0.06146506
+program 0.07120773 0.001129992 0.03361536
+
+> 
+> # Then make a state factor
+> state <- dataset[,factor(alpha+1,levels=1:2)]
+> levels(state) <- c('unemp','onprogram')
+> dataset$state <- state
+> names(risksets) <- levels(state)
+> dataset[, f := factor(sample(1:6,.N,replace=TRUE))]
+> dataset[, g := factor(sample(1:4,.N,replace=TRUE))]
+> opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(alpha+1)+ID(id), data=dataset, 
++               risksets=risksets, control=mphcrm.control(threads=1,iters=1,callback=NULL))
+> options(digits=3)
+> summary(opt[[1]])
+$loglik
+[1] -22232
+
+$coefs
+                   value      se        t  Pr(>|t|)
+job.x1           0.71125 0.00544 130.8179  0.00e+00
+job.x2          -0.63712 0.00658 -96.7980  0.00e+00
+job.alpha       -0.52140 0.02242 -23.2543 3.85e-116
+job.f.2         -0.12581 0.03933  -3.1986  1.39e-03
+job.f.3         -0.12567 0.03724  -3.3744  7.43e-04
+job.f.4         -0.21976 0.03362  -6.5364  6.65e-11
+job.f.5         -0.17512 0.03872  -4.5229  6.18e-06
+job.f.6         -0.22839 0.03811  -5.9926  2.15e-09
+program.x1       0.87558 0.01797  48.7349  0.00e+00
+program.x2       0.30765 0.01714  17.9489  8.84e-71
+program.f.2     -0.14248 0.11118  -1.2815  2.00e-01
+program.f.3     -0.24953 0.12043  -2.0720  3.83e-02
+program.f.4      0.03689 0.12672   0.2911  7.71e-01
+program.f.5     -0.34346 0.13461  -2.5515  1.07e-02
+program.f.6     -0.27075 0.14541  -1.8620  6.26e-02
+program.g.2      0.00368 0.13965   0.0264  9.79e-01
+program.g.3     -0.03593 0.12875  -0.2790  7.80e-01
+program.g.4      0.02772 0.12798   0.2166  8.29e-01
+program.f:g.2:2  0.15816 0.18916   0.8361  4.03e-01
+program.f:g.2:3  0.27322 0.17612   1.5513  1.21e-01
+program.f:g.2:4  0.09226 0.17865   0.5164  6.06e-01
+program.f:g.3:2 -0.01937 0.17701  -0.1094  9.13e-01
+program.f:g.3:3  0.01513 0.17036   0.0888  9.29e-01
+program.f:g.3:4  0.07880 0.18703   0.4214  6.74e-01
+program.f:g.4:2 -0.05509 0.18962  -0.2905  7.71e-01
+program.f:g.4:3 -0.46049 0.18160  -2.5357  1.12e-02
+program.f:g.4:4 -0.09603 0.18534  -0.5181  6.04e-01
+program.f:g.5:2 -0.01243 0.18434  -0.0674  9.46e-01
+program.f:g.5:3  0.20736 0.18735   1.1068  2.68e-01
+program.f:g.5:4  0.48307 0.19310   2.5017  1.24e-02
+program.f:g.6:2  0.23704 0.20755   1.1421  2.53e-01
+program.f:g.6:3  0.24118 0.19342   1.2469  2.12e-01
+program.f:g.6:4  0.08021 0.20664   0.3882  6.98e-01
+
+$moments
+          mean variance sd
+job     0.0684        0  0
+program 0.0461        0  0
+
+> 
+> proc.time()
+   user  system elapsed 
+   4.41    1.25    3.89 
