@@ -26,6 +26,9 @@ The \code{ID()} part specifies the covariate which holds the individual identifi
 
 The \code{S()} specifies the covariate which holds an index into the \code{risksets} list.
 
+These three special symbols are replaced with \code{I()}, so it is possible to have calculations
+inside them.
+
 If the covariates differ among the transitions, one can specify covariates conditional on
 the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should only explain transition to
 job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
@@ -128,5 +131,5 @@ best <- Fit[[1]]
 summary(best)
 }
 \seealso{
-\code{\link{datagen}}
+A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}}.
 }

@@ -50,6 +50,9 @@
 #'
 #' The \code{S()} specifies the covariate which holds an index into the \code{risksets} list.
 #'
+#' These three special symbols are replaced with \code{I()}, so it is possible to have calculations
+#' inside them.
+#' 
 #' If the covariates differ among the transitions, one can specify covariates conditional on
 #' the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should only explain transition to
 #' job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
@@ -114,7 +117,7 @@
 #'      risksets=list(c('job','program'),'job'), control=mphcrm.control(threads=1,iters=2))
 #' best <- Fit[[1]]
 #' summary(best)
-#' @seealso \code{\link{datagen}}
+#' @seealso A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}}.
 #' @export
 mphcrm <- function(formula,data,risksets=NULL,
                    timing=c('exact','interval','none'),
@@ -147,10 +150,7 @@ mphcrm <- function(formula,data,risksets=NULL,
   state <- dataset$state
   hasriskset <- !is.null(risksets)
   if(hasriskset && is.null(state)) warning("riskset is specified, but no state S()")
-  if(is.null(state)) {
-    state <- 0L
-    hasriskset <- FALSE
-  } 
+  if(is.null(state)) hasriskset <- FALSE
 
   if(hasriskset) {
     srange <- range(state)
@@ -159,15 +159,13 @@ mphcrm <- function(formula,data,risksets=NULL,
       stop(sprintf('max state is %d, but there are only %d risksets\n',srange[2],length(risksets)))
     }
     # recode risksets from level names to integers
-    nm <- levels(dataset$df)
-    if(dataset$ztrans) nm <- nm[-1]
+    tlevels <- dataset$tlevels
     risksets <- lapply(risksets, function(set) {
-      ind <- match(set,nm)
+      ind <- match(set,tlevels)
       if(anyNA(ind)) stop(sprintf('Non-existent transition %s in risk set\n',set[is.na(ind)]))
       ind
     })
 
-    dataset$df <- dataset$ztrans <- NULL  # save memory
     # check if transitions are taken which are not in the riskset
     d <- dataset[['d']]
 
@@ -175,7 +173,7 @@ mphcrm <- function(formula,data,risksets=NULL,
     if(any(badtrans)) {
       n <- which(badtrans)[1]
       stop(sprintf("In observation %d(id=%d), a transition to %s is taken, but the riskset of the state(%d) does not allow it",
-                   n, id[n], nm[d[n]], state[n]))
+                   n, id[n], tlevels[d[n]], state[n]))
     }
 
     dataset$riskset <- risksets
@@ -641,60 +639,39 @@ makeparset <- function(dataset,npoints,oldset) {
 
 mymodelmatrix <- function(formula,mf) {
 
-  # handle specials
-  form <- formula
-
-  mt <- terms(formula, specials=c('ID','D','S','C'))
+  #### Handle the specials ####
+  mt <- terms(formula, specials=c('ID','D', 'S', 'C'))
   spec <- attr(mt,'specials')
-  indexC <- spec$C
-  vars <- attr(mt,'variables')
-  facs <- attr(mt,'factors')
+  # replace with I() in formula
+  F <- formula
+  splist <- lapply(unlist(spec), function(sp) attr(mt,'variables')[sp+1L])
+  remove <- function(f, r) update(f, as.formula(substitute(. ~ . - R, list(R=r[[1]]))))
+  pureF <- Reduce(remove, splist, F)
 
-  extra <- sapply(indexC, function(i) eval(vars[[i+1]],list(C=function(tr,spec) substitute(spec))))
-  if(length(extra)) {
-    # update formula with variables from conditional C-specials
-    for(e in extra) form <- update(form,as.formula(bquote(. ~ . + .(e))))
-    mt <- terms(form,specials=c('ID','D','S','C'))
-    vars <- attr(mt,'variables')
-    facs <- attr(mt,'factors')
-    spec <- attr(mt,'specials')
+  Slist <- splist[names(splist) %in% c('ID','D','S')]
+  Ilist <- lapply(Slist, function(ss) substitute(I(R)(), list(R=ss[[1]][[2]])))
+  addI <- function(f,r) update(f, as.formula(substitute(. ~ . + I(R), list(R=r[[1]][[2]]))))
+  IF <- Reduce(addI,Slist,pureF)
 
-    indexC <- spec$C
-  }
-
-  # now we update the terms. Replace ID, D, and S -terms with I()-terms
-  indexID <- spec$ID
-  if(is.null(indexID)) stop('Formula must have an ID-specification')
-  indexD <- spec$D
-  if(is.null(indexD)) stop('Formula must have a duration specification D()')
-  indexS <- spec$S
-
-  # replace variables and facs for ID, D, and S, make indices a character, the position
-  # may chenge when we remove the C-stuff below
-  vars[[indexD+1]] <- eval(vars[[indexD+1]], list(D=function(a) bquote(I(.(substitute(a))))))
-  indexD <- as.character(vars[indexD+1])
-  vars[[indexID+1]] <- eval(vars[[indexID+1]], list(ID=function(a) bquote(I(.(substitute(a))))))
-  indexID <- as.character(vars[indexID+1])
-  if(length(indexS)) {
-    vars[[indexS+1]] <- eval(vars[[indexS+1]], list(S=function(a) bquote(I(.(substitute(a))))))
-    indexS <- as.character(vars[indexS+1])
-  }
-  # remove the C() variables
-  if(length(indexC)) {
-    vars <- vars[-indexC-1L]
-    facs <- facs[-indexC,,drop=FALSE]
-  } 
-  rownames(facs) <- as.character(vars[-1])
-  attr(mt,'factors') <- facs
-  attr(mt,'variables') <- vars
-  attr(mt,'specials') <- NULL
-  mf[[2L]] <- mt
-
+  # then the C-parts, it needs special treatment
+  Clist <- splist[!(names(splist) %in% c('ID','D','S'))]
+  names(Clist) <- sapply(Clist, function(cc) eval(cc[[1L]], list(C=function(a,b) as.character(substitute(a)))))
+  cvars <- lapply(Clist, function(cc) eval(cc[[1]], list(C=function(a,b) substitute(b))))
+  addc <- function(f,r) update(f, as.formula(substitute(. ~ . + R, list(R=r))))
+  IF <- Reduce(addc,cvars,IF)
+  # Now, IF is a suitable formula with all specials removed.
+  mf[[2L]] <- IF
   mf <- eval.parent(mf)
-  N <- nrow(mf)
 
+  # Pick up the special covariates ID, D, and S
+  duration <- as.numeric(mf[[as.character(Ilist$D)]])
+  id <- as.integer(mf[[as.character(Ilist$ID)]])
+  state <- NULL
+  if(length(Ilist$S)) 
+    state <- as.integer(mf[[as.character(Ilist$S)]])
+
+  # and the repsonse, convert to factor with appropriate levels
   orig.d <- model.response(mf)
-
   df <- as.factor(orig.d)
   # put the zero/none/null/0 level first for conversion to integer
   # i.e. ensure that the no-transition is zero
@@ -705,34 +682,26 @@ mymodelmatrix <- function(formula,mf) {
   newlev <- if(ztrans) c(L[nlpos],L[!nlpos]) else L
   df <- factor(df,levels=newlev)
   if(!is.factor(orig.d)) levels(df) <- paste('t',levels(df),sep='')
+  # make a zero-based d for use in C
   d <- as.integer(df)-ztrans
 
   # analyze the formula to figure out which
   # covariates explain which transitions
   # split off factors
 
+  # first check that the conditional covariates specifies existing transitions.
+  tlevels <- levels(df)
+  if(ztrans) tlevels <- tlevels[-1]
+  if(length(Clist)) {
+    trnames <- names(Clist)
+    enm <- match(trnames,tlevels)
+    if(anyNA(enm)) stop(sprintf('transition to %s specified in conditional covariate, but no such transition exists.\n',
+                                trnames[is.na(enm)]))
+  }  
+
   transitions <- nlevels(df)-ztrans
   cls <- attr(terms(mf),'dataClasses')
 
-  duration <- mf[[indexD]]
-  id <- mf[[indexID]]
-  state <- NULL
-  if(length(indexS)) 
-    state <- mf[[indexS]]
-
-# then the conditional covariates
-  if(length(extra) > 0) {
-    vars <- attr(terms(formula),'variables')
-    nm <- levels(df)
-    if(ztrans) nm <- nm[-1]
-    trnames <- sapply(indexC, 
-                        function(i) eval(vars[[i+1]],
-                                         list(C=function(tr,spec) as.character(substitute(tr)))))
-    enm <- match(trnames, nm)
-    if(anyNA(enm)) stop(sprintf('transition to %s specified in conditional covariate, but no such transition exists.\n',
-                                trnames[is.na(enm)]))
-    names(extra) <- nm[enm]
-  }
 
   # for each transition, make a model matrix for the numeric covariates,
   # and a list of factors
@@ -741,20 +710,13 @@ mymodelmatrix <- function(formula,mf) {
     # find the formula for
     # this transition. Add in all the conditional covariates for this transition
     tnam <- levels(df)[t+ztrans]
-    if(tnam %in% names(extra)) {
-      ff <- update(formula, as.formula(bquote(. ~ . + .(extra[[tnam]]))))
+    if(tnam %in% names(cvars)) {
+      ff <- update(pureF, as.formula(bquote(. ~ . + .(cvars[[tnam]]))))
     } else {
-      ff <- formula
+      ff <- pureF
     }
 
-    # remove all the specials from the terms object
-    mt <- terms(ff,specials=c('ID','D','S','C'),keep.order=TRUE)
-    index <- unique(unlist(attr(mt,'specials')))
-    attr(mt,'variables') <- attr(mt,'variables')[-index-1L]
-    attr(mt,'factors') <- attr(mt,'factors')[-index,, drop=FALSE]
-    attr(mt,'specials') <- NULL
-    attr(mt,'order') <- attr(mt,'order')[-index]
-
+    mt <- terms(ff,keep.order=TRUE)
     fact <- attr(mt,'factors')
     # now, filter out those terms which are neither factors, nor interactions with factors
     keep <- colSums(fact) > 0
@@ -769,9 +731,10 @@ mymodelmatrix <- function(formula,mf) {
 
     attr(mt,'factors') <- fact[,keep,drop=FALSE]
     attr(mt,'intercept') <- 0
+    # create model matrix from the constructed terms
     mat <- model.matrix(mt,mf)
-# then the factor related stuff
 
+# then the factor related stuff
     faclist <- lapply(colnames(fact), function(term) {
       codes <- fact[,term]
 
@@ -786,19 +749,13 @@ mymodelmatrix <- function(formula,mf) {
 
       codes <- codes[contains[isfac]]
       flist <- eval(as.call(lapply(c('list',contains[isfac]),as.name)), mf,environment(formula))
-#      names(flist) <- contains[isfac]
       # remove a reference level if contrasts
       fl <- mapply(function(f,useall) {
         if(useall) return(f)
         factor(f,levels=c(NA,levels(f)[-1]))
       }, flist, codes==2, SIMPLIFY=FALSE)
 
-      if(sum(isfac) > 1) {
-        iaf <- Reduce(':',fl)
-#        iaf <- eval(as.call(lapply(c(':',contains[isfac]),as.name)), mf,environment(formula))
-      } else {
-        iaf <- fl[[1]] #eval(as.name(contains[isfac]), mf)
-      }
+      iaf <- Reduce(`:`, fl)
       if(any(!isfac)) {
         attr(iaf,'x') <- as.matrix(Reduce('*',eval(as.call(lapply(c('list',contains[!isfac]),as.name)),
                                                    mf,environment(formula))))
@@ -812,7 +769,7 @@ mymodelmatrix <- function(formula,mf) {
     faclist <- Filter(Negate(is.null), faclist)
     list(mat=t(mat),faclist=faclist)
   })
-  names(data) <- levels(df)[-1]
-  dataset <- list(data=data, d=d, nobs=nrow(mf), df=df,ztrans=ztrans,duration=duration,id=id,state=state)
+  names(data) <- tlevels
+  dataset <- list(data=data, d=d, nobs=nrow(mf), tlevels=tlevels,duration=duration,id=id,state=state)
   dataset
 }

@@ -13,8 +13,8 @@
 #' The two hazards are influenced by covariates observed by the researcher, called \code{"x1"} and
 #' \code{"x2"}. In addition there are unobserved characteristics influencing the hazards. Being
 #' on a programme also influences the hazard to get a job. In the generated dataset, being on
-#' a programme is the indicator variable \code{alpha}. While on a programme, the only transition you can
-#' make is \code{"job"}. The other is to be estimated.
+#' a programme is the indicator variable \code{alpha}. While on a programme, the only transition that can
+#' be made is \code{"job"}. 
 #'
 #' The dataset is organized as a series of rows for each individual. Each row is a time period
 #' with constant covariates.
@@ -34,7 +34,7 @@
 #' When on a programme the \code{"toprogram"} transition can not be made. This is implemented
 #' by specifying a list of risksets and using \code{alpha+1} as an index into this set.
 #'
-#' The two are modeled as \eqn{exp(X \beta + \mu)}, where \eqn{X} is a matrix of covariates
+#' The two hazards are modeled as \eqn{exp(X \beta + \mu)}, where \eqn{X} is a matrix of covariates
 #' \eqn{\beta} is a vector of coefficients to be estimated, and \eqn{\mu} is an intercept. All of
 #' these quantities are transition specific. This yields an individual likelihood which we call
 #' \eqn{M_i(\mu)}. The idea behind the mixed proportional hazard model is to model the
@@ -48,15 +48,15 @@
 #' probability 1. Then we search for another point with a small probability, and maximize the
 #' likelihood from there. We continue with adding masspoints until we no longer can improve
 #' the likelihood.
-#'
 #' 
 #' @param N integer.
-#' The number of individuals in the dataset
-#' @param censor numeric. The total observation period.
+#' The number of individuals in the dataset.
+#' @param censor numeric. The total observation period. Individuals are removed
+#' from the dataset if they do not exit to \code{"job"} before this time.
 #' @note
-#' The example illustrates how data(durdata) was generated.
+#' The example illustrates how \code{data(durdata)} was generated.
 #' @examples
-#' data.table::setDTthreads(1)
+#' data.table::setDTthreads(1)  # avoid screams from cran-testing
 #' dataset <- datagen(5000,80)
 #' print(dataset)
 #' risksets <- list(c("job","program"), "job")
