@@ -685,10 +685,11 @@ mymodelmatrix <- function(formula,mf) {
 
   # Pick up the special covariates ID, D, and S
   id <- as.integer(mf[[as.character(Ilist$ID)]])
+
   if(length(Ilist$D))
     duration <- as.numeric(mf[[as.character(Ilist$D)]])
   else
-    duration <- NULL
+    duration <- rep(1,nrow(mf))
 
   state <- NULL
   if(length(Ilist$S)) {
@@ -734,12 +735,13 @@ mymodelmatrix <- function(formula,mf) {
     
     # find the formula for
     # this transition. Add in all the conditional covariates for this transition
+    ff <- pureF
     tnam <- levels(df)[t+ztrans]
     if(tnam %in% names(cvars)) {
-      ff <- update(pureF, as.formula(bquote(. ~ . + .(cvars[[tnam]]))))
-    } else {
-      ff <- pureF
-    }
+      # awkward, cvars may have duplicate names if C(foo, a+b) + C(foo,d+c)
+      for(i in (which(names(cvars) %in% tnam)))
+        ff <- update(ff, as.formula(bquote(. ~ . + .(cvars[[i]]))))
+    } 
 
     mt <- terms(ff,keep.order=TRUE)
     fact <- attr(mt,'factors')
@@ -757,7 +759,7 @@ mymodelmatrix <- function(formula,mf) {
     attr(mt,'factors') <- fact[,keep,drop=FALSE]
     attr(mt,'intercept') <- 0
     # create model matrix from the constructed terms
-    mat <- model.matrix(mt,mf)
+    mat <- t(model.matrix(mt,mf))
 
 # then the factor related stuff
     faclist <- lapply(colnames(fact), function(term) {
@@ -792,7 +794,7 @@ mymodelmatrix <- function(formula,mf) {
 
     names(faclist) <- colnames(fact)
     faclist <- Filter(Negate(is.null), faclist)
-    list(mat=t(mat),faclist=faclist)
+    list(mat=mat,faclist=faclist)
   })
   names(data) <- tlevels
   dataset <- list(data=data, d=d, nobs=nrow(mf), tlevels=tlevels,duration=duration,id=id,state=state)
