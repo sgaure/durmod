@@ -15,7 +15,8 @@ Description: Estimation of mixed proportional hazard competing risk model.
  B.G. Lindsay (1981) <doi:10.1007/978-94-009-8552-0_8>.
 Classification/JEL: C14, C15, C41
 License: Artistic-2.0
-Imports: Rcpp (>= 1.0.1), stats, utils, Formula, numDeriv, nloptr, parallel, data.table, mvtnorm
+Imports: Rcpp (>= 1.0.1), stats, utils, numDeriv, nloptr, parallel, data.table, mvtnorm
+Suggests: knitr
 Depends: R (>= 3.5.0)
 VignetteBuilder: knitr
 LinkingTo: Rcpp

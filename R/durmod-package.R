@@ -22,7 +22,6 @@
 #' @importFrom Rcpp evalCpp
 #' @import 'stats'
 #' @import 'utils'
-#' @importFrom Formula as.Formula
 #' @importFrom nloptr nloptr
 #' @importFrom numDeriv grad hessian jacobian
 #' @importFrom parallel detectCores

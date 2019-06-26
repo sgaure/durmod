@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-06-14 r76701) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-06-26 r76741) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -20,18 +20,18 @@ Type 'q()' to quit R.
 > set.seed(42)
 > dataset <- datagen(4000,1200)
 > print(dataset)
-        id         x1         x2 alpha       d  duration
-   1:    1  1.3709584 -0.1418087     0     job  1.123083
-   2:    2  0.2984146 -1.5918203     0    none 14.543001
-   3:    2  0.2984146 -1.5918203     0     job  4.139920
-   4:    3  0.3631284 -0.3255406     0 program 22.891390
-   5:    3  0.3631284 -0.3255406     1     job  5.809067
-  ---                                                   
-8806: 3998  1.8651969  0.5667597     1    none  7.818901
-8807: 3998  1.8651969  0.5667597     1     job  7.991203
-8808: 3999  0.8504394  1.3854584     0 program  2.352759
-8809: 3999  0.8504394  1.3854584     1     job  4.587245
-8810: 4000 -0.4080361 -1.1617422     0     job  1.589720
+        id         x1         x2 alpha       d  duration     state
+   1:    1  1.3709584 -0.1418087     0     job  1.123083     unemp
+   2:    2  0.2984146 -1.5918203     0    none 14.543001     unemp
+   3:    2  0.2984146 -1.5918203     0     job  4.139920     unemp
+   4:    3  0.3631284 -0.3255406     0 program 22.891390     unemp
+   5:    3  0.3631284 -0.3255406     1     job  5.809067 onprogram
+  ---                                                             
+8806: 3998  1.8651969  0.5667597     1    none  7.818901 onprogram
+8807: 3998  1.8651969  0.5667597     1     job  7.991203 onprogram
+8808: 3999  0.8504394  1.3854584     0 program  2.352759     unemp
+8809: 3999  0.8504394  1.3854584     1     job  4.587245 onprogram
+8810: 4000 -0.4080361 -1.1617422     0     job  1.589720     unemp
 > risksets <- list(c('job','program'), c('job'))
 > options(digits=3)
 > # just two iterations to save time
@@ -147,4 +147,4 @@ point  1    1 0.0355
 > 
 > proc.time()
    user  system elapsed 
-   3.09    1.09    2.74 
+   4.89    0.18    2.94 

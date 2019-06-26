@@ -135,5 +135,6 @@ best <- Fit[[1]]
 summary(best)
 }
 \seealso{
-A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}}.
+A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}},
+and in the vignette \code{vignette("mphcrmwhat")}
 }

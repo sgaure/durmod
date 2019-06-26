@@ -79,7 +79,8 @@ Taken together, all the observations for an individual yields an individual like
 for individual \(i\). We call it
 \(\ell_i(\mu)\), where \(\mu\) is the vector \((\mu^j, \mu^p)\).
 
-However, there is a mixture part also. The \(\mu\)-vector is stochastic with a
+However, there is a mixture part also. Designed to account for unobserved individual
+heterogeneity. The \(\mu\)-vector is stochastic with a
 discrete distribution.  That is, there is an \(n\), a set of probabilites \(p_j\), 
 and vectors \(\mu_j\), for \(j=1..n\). Of course, we have \(\sum_{j=1}^n p_j = 1\).
 
@@ -101,13 +102,14 @@ distribution until we are no longer able to increase the likelihood.
 In \pkg{durmod} we use the \code{mphcrm} function for this purpose. Here is an example.
 First we create a ``riskset'', a specification of which hazards are experienced in various states:
 <<>>=
-risksets <- list(unemp=c('job','program'), program='job')
+risksets <- list(unemp=c('job','program'), onprogram='job')
 @ 
 
-Then we create a set of control parameters, since this is a demonstration dataset, we limit
+Then we create a set of control parameters, since this is a demonstration dataset with only
+a few thousand observations, we limit
 ourselves to 5 iterations, i.e. no more than 5 masspoints in the distribution. Since
-this vignette is to be created by the CRAN repository, we also limit ourselves to using
-2 cpus, or threads, in the computation.
+this vignette is to be created by the busy CRAN repository, we also limit ourselves to using
+2 cpus, or threads, in the computation.  
 <<>>=
 ctrl <- mphcrm.control(iters=5, threads=2)
 @ 
@@ -117,10 +119,20 @@ Then we are ready to estimate. There are a couple of special terms in the formul
 set.seed(42) # for reproducibility
 opt <- mphcrm(d ~ x1 + x2 + 
                 C(job, alpha) + ID(id) + D(duration) + S(state), 
-              data=durdata, control=ctrl)
+              data=durdata, risksets=risksets, control=ctrl)
 @ 
 
-Note that \code{mphcrm} writes diagnostic output, one line per iteration. It contains
+The left hand side of the formula, \code{d}, is the outcome, the transition that is taken.
+The \code{C(job, alpha)} term is a list of conditional covariates, the \code{alpha}
+should only explain the \code{``job''} transition. The \code{ID(id)} specifies
+that the covariate \code{id} identifies individuals. The \code{D(duration)} specifies
+that the covariate \code{duration} contains the durations of the observations. Finally,
+the \code{S(state)} term specifies that the covariate \code{state} is a factor which
+indexes into the risksets argument. Note that the names of the list \code{risksets} are
+the same as the levels in the factor \code{state}. And that the entries in the list
+are levels of the factor \code{d}, i.e. possible transitions.
+
+\code{mphcrm} writes diagnostic output, one line per iteration. It contains
 potentially useful information. There is a time stamp, the iteration number, the number
 of masspoints, the resulting log likelihood, the 2-norm of the gradient, the smallest
 probability in the masspoint distribution, the reverse condition number of the Fisher matrix,
@@ -138,5 +150,14 @@ the one with the largest likelihood. We can look at a summary:
 best <- opt[[1]]
 summary(best)
 @ 
+
+It has three entries, \code{``loglik''}, which is simply the log likelihood,
+\code{``coefs''} which is the values and standard errors of the estimated
+coefficients. And \code{``moments''}, which is the first and second moments of
+the proportional hazard distribution.
+
+The limit to 5 masspoints has the consequence that the \code{alpha} estimate is negative, i.e. 
+the labour market programme has a negative effect on the hazard for getting a job.
+The reader may run the example with a maximum of 15 iterations, and get a positive effect.
 \end{document}
 

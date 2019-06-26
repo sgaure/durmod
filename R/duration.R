@@ -121,15 +121,15 @@
 #'      risksets=risksets, control=mphcrm.control(threads=1,iters=2))
 #' best <- Fit[[1]]
 #' summary(best)
-#' @seealso A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}}.
+#' @seealso A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}},
+#' and in the vignette \code{vignette("mphcrmwhat")}
 #' @export
 mphcrm <- function(formula,data,risksets=NULL,
                    timing=c('exact','interval','none'),
                    subset, na.action, control=mphcrm.control(),cluster=NULL) {
 
   timing <- match.arg(timing)
-  F <- Formula::as.Formula(formula)
-  environment(F) <- environment(formula)
+  F <- formula
 
   # create model frame
   mf <- match.call(expand.dots=TRUE)

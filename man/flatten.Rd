@@ -28,3 +28,8 @@ where \code{opt} is returned from \code{mphcrm}.}
   ordinary covariates.  \code{flatten} extracts them as a named
   vector. \code{unflatten} puts them back in structured form.
 }
+\details{
+\code{flatten}/\code{unflatten} is just a thinly disguised
+  \code{\link[base]{unlist}}/\code{\link[utils]{relist}}, but uses
+  slightly more readable names.
+}
