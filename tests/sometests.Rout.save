@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-06-26 r76741) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-06-25 r76738) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -41,8 +41,8 @@ Type 'q()' to quit R.
 > best <- opt[[1]]
 > print(best)
 Estimate with 2 points, log-likelihood: -21023.3863
-    job.x1     job.x2  job.alpha program.x1 program.x2      pargs 
-     0.757     -0.742     -0.266      0.863      0.376     -0.914 
+    job.x1     job.x2  job.alpha program.x1 program.x2 
+     0.757     -0.742     -0.266      0.863      0.376 
 
 Proportional hazard distribution
           prob    job program
@@ -59,7 +59,6 @@ job.x2     -0.742 0.01326 -55.93  0.00e+00
 job.alpha  -0.266 0.03496  -7.61  2.93e-14
 program.x1  0.863 0.02319  37.20 2.09e-281
 program.x2  0.376 0.02340  16.07  2.79e-57
-pargs      -0.914 0.05478 -16.68  1.69e-61
 
 $moments
           mean variance     sd
@@ -147,4 +146,4 @@ point  1    1 0.0355
 > 
 > proc.time()
    user  system elapsed 
-   4.89    0.18    2.94 
+   4.59    1.21    4.05 

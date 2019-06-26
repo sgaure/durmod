@@ -28,7 +28,7 @@
 The \pkg{durmod} package fits a mixed proportional hazard model with competing risks
 to duration data.
 
-Let's have a look at a simulated dataset:
+Let's have a look at a generated dataset which simulates an unemployment register.
 <<data>>=
 library(durmod)
 data(durdata)
@@ -52,7 +52,7 @@ Also, when on a programme, one of the hazards disappear, it is no longer possibl
 make a transition to a programme, we're already on it.
 
 Each row of the dataset has a \code{duration}, this is the time until the transition
-marked in \code{d} happens.
+marked in \code{d} occurs.
 
 In our dataset, we limit the total duration for each individudal to 80. That means
 that some individuals do not exit the dataset by doing a transition, but with a \code{d==''none''}.
@@ -73,7 +73,7 @@ The hazard for transition to programme is,
 
 Here we have included an ``intercept'', a \(\mu\), it could equally well have been
 written as a multiplicative factor \(\exp(\mu)\) instead. This
-\(\mu\)-term is the ``proportional hazard''. 
+\(\exp(\mu)\)-term is the ``proportional hazard''. 
 
 Taken together, all the observations for an individual yields an individual likelihood
 for individual \(i\). We call it
@@ -110,13 +110,13 @@ the same as the levels in the factor \code{state}. And that the entries in the l
 are levels of the factor \code{d}, i.e. possible transitions.
 
 Then we create a set of control parameters. Since this vignette is to
-be created by the busy CRAN repository, we limit ourselves to 5
-iterations, i.e. no more than 5 masspoints in the distribution. For
-the same reason we also limit us to 2 cpus, or threads, in the
+be created by the busy CRAN repository, we limit ourselves to 6
+iterations, i.e. no more than 6 masspoints in the distribution. For
+the same reason we also limit to 2 cpus, or threads, in the
 computation. The default is to use all the available cpus/cores.
 
 <<>>=
-ctrl <- mphcrm.control(iters=5, threads=2)
+ctrl <- mphcrm.control(iters=6, threads=2)
 @ 
 
 Then we are ready to estimate. There are a couple of special terms in the formula we use:
@@ -159,8 +159,71 @@ It has three entries, \code{``loglik''}, which is simply the log likelihood,
 coefficients. And \code{``moments''}, which is the first and second moments of
 the proportional hazard distribution.
 
-The limit to 5 masspoints has the consequence that the \code{alpha} estimate is negative, i.e. 
+If we had limited to 5 masspoints, the \code{alpha} estimate would be negative, i.e. 
 the labour market programme has a negative effect on the hazard for getting a job.
 The reader may run the example with a maximum of 15 iterations to obtain a positive effect.
+
+We can see how the \code{alpha} changes with more points:
+<<>>=
+t(sapply(opt, function(o) summary(o)$coefs["job.alpha",]))
+@ 
+
+\section{More options}
+\subsection{Interval timing}
+The example above had exactly recorded time. For some applications we do have that, while
+in other applications we only have a time interval when the transition is known to have taken
+place. The data above is actually a prime example, perhaps we only have labour data on a monthly basis.
+When a transition takes place, it is only registered at the end of the month, and there is no
+record of the day. In this case, the \code{duration} would be 1 for every observation, and one
+should use the \code{timing="interval"} argument in \code{mphcrm}.  This model is
+notoriously difficult to estimate because the likelihood involves ``doubly exponential'' 
+expressions of the type \(1-\exp(-\exp(x))\), which are numerically challenging.
+
+If the hazards are small, 1-2\% per time unit, the difference between the interval and exact model
+are quite small, so one may opt for using the exact model instead.
+
+\subsection{No timing}
+In some applications there isn't any time. A transition occurs, or not. In this case
+the specification \code{timing="none"} can be used. It will use a logit model for the 
+transition probabilities.
+
+\subsection{Factors}
+\code{mphcrm} treats factors specially. There is, I think, nothing special to see, but
+internally \code{mphcrm} does not create a large model matrix filled with dummy variables. This means
+that factors with many levels is quite fast to estimate.
+
+\section{Control parameters}
+There are many control parameters. Here are some one may want to tinker with.
+\begin{itemize}
+\item{\code{threads.}} An integer. The number of parallel threads used
+  by \code{mphcrm}. The default is taken from
+  \code{getOption("durmod.threads")}, which is initialized from the
+  environment variable \code{DURMOD\_THREADS}, \code{OMP\_NUM\_THREADS},
+  \code{OMP\_THREAD\_LIMIT}, \code{NUMBER\_OF\_PROCESSORS}, or else from
+  \code{parallel::detectCores()}.
+\item{\code{iters.}} An integer. The number of iterations to perform. The estimation may stop earlier, if
+  neither the log likelihood \emph{nor} the entropy improves. The default is 15.
+\item{\code{ll.improve.}} A numeric. The amount the log-likelihood must increase with to be considered an
+  improvement. The default is 0.001.
+\item{\code{e.improve}} A numeric. The amount the entropy of the hazard distribution must increase with
+  to be considered an improvement. The default is 0.001.
+\item{\code{callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
+  it is possible to write your own. It will replace the default callback (which you can call from your function).
+  In this way you can e.g. get diagnostics on particular coefficients, save intermediate results
+  to file, or other partakings. See \code{mphcrm.callback}.
+\item{\code{jobname.}} A character string. The initial portion of the one-line diagnostic. Useful if you
+  e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
+  you can see the progress. The default is \code{"mphcrm"}.
+\item{\code{method.}} A character string. Either \code{"BFGS"} (the default), or \code{"L-BFGS-B"}. The latter
+  saves some memory, if that is a problem with estimations with a very large number of coefficients.
+\item{\code{trap.interrupt.}} A logical. If you decide to interrupt an interactive estimation before
+  it has terminated, either because you don't want to wait, or because it seems to have run astray,
+  the default behaviour for \code{mphcrm} is to catch the interrupt, and return gracefully with the
+  result of the estimation so far. This behaviour can be switched off with \code{trap.interrupt=FALSE}.
+\item{\code{cluster.}} A cluster from package \code{parallel} or \code{snow}. The dataset will be
+  split among the cluster nodes, with approximately equally many observations on each. The nodes will
+  then do their share of the likelihood computations. If using a cluster, the \code{threads} parameter will
+  be the number of cpus used on each cluster node.
+\end{itemize}
 \end{document}
 
