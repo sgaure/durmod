@@ -45,10 +45,10 @@ print.mphcrm.opt <- function(x,...) {
 
 #' @method summary mphcrm.opt
 #' @export
-summary.mphcrm.opt <- function(object, ...) {
+summary.mphcrm.opt <- function(object, ...,tol=.Machine$double.eps) {
   val <- flatten(object$par)
   dist <- grep('(\\.mu[0-9]+|pargs[0-9]*)$',names(val))
-  se <- if(!is.null(object$fisher)) se(object)[-dist] else NA
+  se <- if(!is.null(object$fisher)) se(object,tol)[-dist] else NA
   tval <- val[-dist]/se
   rdf <- object$nobs
   list(loglik=object$value,

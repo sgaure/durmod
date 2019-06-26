@@ -11,7 +11,7 @@
 #' x[,2] <- x[,3]+x[,5]
 #' geninv(x)
 #' @export
-geninv <- function(X, tol=sqrt(.Machine$double.eps)) {
+geninv <- function(X, tol=.Machine$double.eps) {
   if (length(dim(X)) > 2L || !is.numeric(X)) 
     stop("'X' must be a numeric matrix")
   if (!is.matrix(X))  X <- as.matrix(X)
@@ -139,9 +139,9 @@ mphcovs.log <- function(pset) {
 #' from \code{\link{mphcrm}}.
 #' @param tol tolerance for \link{geninv}
 #' @export
-se <- function(x,tol=1e-9) {
-  if(is.matrix(x)) return(sqrt(diag(geninv(x))))
-  if(!is.null(x$fisher)) return(sqrt(diag(geninv(x$fisher))))
+se <- function(x,tol=.Machine$double.eps) {
+  if(is.matrix(x)) return(sqrt(diag(geninv(x,tol))))
+  if(!is.null(x$fisher)) return(sqrt(diag(geninv(x$fisher,tol))))
   stop("Can't find a matrix to invert")
 }
 

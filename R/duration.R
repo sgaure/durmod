@@ -383,6 +383,28 @@ pointiter <- function(dataset,pset,control) {
     }
   }
 
+# rescale the parameters
+  scales <- unlist(lapply(dataset$data, function(dd) attr(dd,'recode')[[2]]))
+  opt <- lapply(opt, function(op) {
+    nm <- names(op$gradient)
+    scalevec <- rep(1,length(nm))
+    names(scalevec) <- nm
+    scalevec[names(scales)] <- scales
+    scalemat <- scalevec * rep(scalevec,each=length(scalevec))
+    if(!is.null(op$gradient)) op$gradient <- op$gradient / scalevec
+    if(!is.null(op$numgrad)) op$numgrad <- op$numgrad / scalevec
+    if(!is.null(op$fisher)) op$fisher <- op$fisher / scalemat
+    if(!is.null(op$hessian)) op$hessian <- op$hessian / scalemat
+    for(tr in names(dataset$data)) {
+      offset <- attr(dataset$data[[tr]],'recode')$offset
+      scale <- attr(dataset$data[[tr]],'recode')$scale
+      op$par$parset[[tr]]$pars[] <- op$par$parset[[tr]]$pars*scale
+      muadj <- sum(op$par$parset[[tr]]$pars*offset)
+      op$par$parset[[tr]]$mu <- op$par$parset[[tr]]$mu - muadj
+    }
+    op
+  })
+
   structure(opt,class='mphcrm.list')
 }
 
@@ -581,17 +603,8 @@ ml <- function(dataset,pset,control) {
 
   skel <- attr(flatten(sol),'skeleton')
 
-  if(TRUE) {
-  # now, scale back the parameters
-  for(tr in names(dataset$data)) {
-    rang <- attr(dataset$data[[tr]],'ranges')
-    scale <- apply(rang,2,diff)
-    minr <- rang[1,]
-    sol$parset[[tr]]$pars[names(scale)] <- sol$parset[[tr]]$pars[names(scale)]/scale
-    muadj <- sum(sol$parset[[tr]]$pars[names(scale)]*minr)
-    sol$parset[[tr]]$mu <- sol$parset[[tr]]$mu - muadj
-  }
-  }
+
+
   opt$value <- -opt$value
   opt$par <- sol
   p <- a2p(sol$pargs)
@@ -599,6 +612,7 @@ ml <- function(dataset,pset,control) {
 
   # create a covariance matrix, we use the inverse of the (negative) fisher matrix, it's fast to compute
   nm <- names(flatten(opt$par))
+
   if(isTRUE(control$gradient)) {
     opt$gradient <- gLL(flatten(opt$par),skel,dataset,control)
     names(opt$gradient) <- nm
@@ -615,6 +629,7 @@ ml <- function(dataset,pset,control) {
     opt$hessian <- hLL(flatten(opt$par),skel,dataset,control)
     dimnames(opt$hessian) <- list(nm,nm)
   }
+
   opt$nobs <- dataset$nobs
   opt$nspells <- dataset$nspells
   structure(opt,class='mphcrm.opt')
@@ -818,12 +833,11 @@ mymodelmatrix <- function(formula,mf) {
     # mu <- estmu - sum(rang[1,]*beta)
     # all this happens in the function ml()
 
-    rang <- apply(mat,1,range)
-#    rang <- apply(mat,1,function(a) c(0,1)) # no scale
-    scale <- apply(rang,2,diff)
-    scalemat <- (mat-rang[1,])/scale
-
-    structure(list(mat=scalemat,faclist=faclist), ranges=rang)
+    offset <- apply(mat,1,mean)
+#    scale <- 1/apply(mat,1,sd)
+    scale <- 1/apply(mat,1,function(x) max(abs(x-mean(x))))
+    scalemat <- (mat-offset)*scale
+    structure(list(mat=scalemat,faclist=faclist), recode=list(offset=offset,scale=scale))
   })
   names(data) <- tlevels
   dataset <- list(data=data, d=d, nobs=nrow(mf), tlevels=tlevels,duration=duration,id=id,state=state)

@@ -4,7 +4,7 @@
 \alias{se}
 \title{Extract standard errors of the estimated parameters}
 \usage{
-se(x, tol = 1e-09)
+se(x, tol = .Machine$double.eps)
 }
 \arguments{
 \item{x}{The Fisher matrix, typically from \code{opt[[1]]$fisher}, where \code{opt} is returned
