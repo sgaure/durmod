@@ -539,7 +539,8 @@ hLL <- function(args, skel, dataset, ctrl) {
 optfull <- function(dataset, pset, control) {
   args <- flatten(pset)
   opt <- optim(args,LL,gLL,method=control$method,
-        control=list(trace=0,REPORT=10,maxit=20*length(args),lmm=60,abstol=1e-4,reltol=1e-14),
+        control=list(trace=0,REPORT=10,maxit=20*length(args),lmm=60,
+                     abstol=1e-4,reltol=1e-14),
         skel=attr(args,'skeleton'), ctrl=control,dataset=dataset)
   opt$par <- unflatten(opt$par)
   opt
@@ -566,7 +567,6 @@ ml <- function(dataset,pset,control) {
 #  control$minprob <- 0
   opt$par <- badpoints(opt$par, control)
   sol <- opt$par
-  skel <- attr(flatten(opt$par),'skeleton')
 
   # reorder the masspoints, highest probability first
   probs <- a2p(sol$pargs)
@@ -578,6 +578,20 @@ ml <- function(dataset,pset,control) {
     names(pp$mu) <- nm
     pp
   })
+
+  skel <- attr(flatten(sol),'skeleton')
+
+  if(TRUE) {
+  # now, scale back the parameters
+  for(tr in names(dataset$data)) {
+    rang <- attr(dataset$data[[tr]],'ranges')
+    scale <- apply(rang,2,diff)
+    minr <- rang[1,]
+    sol$parset[[tr]]$pars[names(scale)] <- sol$parset[[tr]]$pars[names(scale)]/scale
+    muadj <- sum(sol$parset[[tr]]$pars[names(scale)]*minr)
+    sol$parset[[tr]]$mu <- sol$parset[[tr]]$mu - muadj
+  }
+  }
   opt$value <- -opt$value
   opt$par <- sol
   p <- a2p(sol$pargs)
@@ -794,7 +808,22 @@ mymodelmatrix <- function(formula,mf) {
 
     names(faclist) <- colnames(fact)
     faclist <- Filter(Negate(is.null), faclist)
-    list(mat=mat,faclist=faclist)
+
+    # force covariates to be between 0 and 1.
+    # i.e. subtract minimum, divide by span
+    # the estimated betas must also be divided by span
+    # beta <- estbeta / scale
+    # the gradient and Fisher matrix must also be adjusted
+    # the intercept estimates, the mus, must be adjusted
+    # mu <- estmu - sum(rang[1,]*beta)
+    # all this happens in the function ml()
+
+    rang <- apply(mat,1,range)
+#    rang <- apply(mat,1,function(a) c(0,1)) # no scale
+    scale <- apply(rang,2,diff)
+    scalemat <- (mat-rang[1,])/scale
+
+    structure(list(mat=scalemat,faclist=faclist), ranges=rang)
   })
   names(data) <- tlevels
   dataset <- list(data=data, d=d, nobs=nrow(mf), tlevels=tlevels,duration=duration,id=id,state=state)

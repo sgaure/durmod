@@ -64,7 +64,7 @@ mphdist <- function(pset) {
     colnames(mus) <- names(pset$parset)
   }
   rownames(mus) <- sprintf('point %2d',seq_len(nrow(mus)))
-  prob <- a2p(pset$parg)
+  prob <- a2p(pset$pargs)
   cbind(prob,mus)
 }
 

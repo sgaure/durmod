@@ -47,7 +47,7 @@ print.mphcrm.opt <- function(x,...) {
 #' @export
 summary.mphcrm.opt <- function(object, ...) {
   val <- flatten(object$par)
-  dist <- grep('(\\.mu|pargs)[0-9]+$',names(val))
+  dist <- grep('(\\.mu[0-9]+|pargs[0-9]*)$',names(val))
   se <- if(!is.null(object$fisher)) se(object)[-dist] else NA
   tval <- val[-dist]/se
   rdf <- object$nobs
@@ -63,7 +63,7 @@ summary.mphcrm.opt <- function(object, ...) {
 #' @export
 summary.mphcrm.pset <- function(object,...) {
   val <- flatten(object)
-  dist <- grep('(\\.mu|pargs)[0-9]+$',names(val))
+  dist <- grep('(\\.mu[0-9]+|pargs[0-9]*)$',names(val))
   list(value = val[-dist], 
        moments=mphdist(object))
 }
@@ -72,7 +72,7 @@ summary.mphcrm.pset <- function(object,...) {
 #' @export
 print.mphcrm.pset <- function(x, ...) {
   val <- flatten(x)
-  dist <- grep('(\\.mu|pargs)[0-9]+$',names(val))
+  dist <- grep('(\\.mu[0-9]+|pargs[0-9]*)$',names(val))
   print(val[-dist])
   cat('\nProportional hazard distribution\n')
   print(round(mphdist(x),8))

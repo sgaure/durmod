@@ -161,6 +161,6 @@ the proportional hazard distribution.
 
 The limit to 5 masspoints has the consequence that the \code{alpha} estimate is negative, i.e. 
 the labour market programme has a negative effect on the hazard for getting a job.
-The reader may run the example with a maximum of 15 iterations, and get a positive effect.
+The reader may run the example with a maximum of 15 iterations to obtain a positive effect.
 \end{document}
 
