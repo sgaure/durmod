@@ -79,12 +79,12 @@ Taken together, all the observations for an individual yields an individual like
 for individual \(i\). We call it
 \(\ell_i(\mu)\), where \(\mu\) is the vector \((\mu^j, \mu^p)\).
 
-However, there is a mixture part also. Designed to account for unobserved individual
+However, there is a mixture part also, designed to account for unobserved individual
 heterogeneity. The \(\mu\)-vector is stochastic with a
 discrete distribution.  That is, there is an \(n\), a set of probabilites \(p_j\), 
 and vectors \(\mu_j\), for \(j=1..n\). Of course, we have \(\sum_{j=1}^n p_j = 1\).
 
-The mixture likelihood for an individual \(i\) is \(L_i = \sum_j p_j \ell(\mu_j)\).
+The mixture likelihood for an individual \(i\) is \(L_i = \sum_j p_j \ell_i(\mu_j)\).
 
 The log-likelihood for the dataset is thus, \(L=\sum_i \log(L_i)\).
 
@@ -105,11 +105,16 @@ First we create a ``riskset'', a specification of which hazards are experienced 
 risksets <- list(unemp=c('job','program'), onprogram='job')
 @ 
 
-Then we create a set of control parameters, since this is a demonstration dataset with only
-a few thousand observations, we limit
-ourselves to 5 iterations, i.e. no more than 5 masspoints in the distribution. Since
-this vignette is to be created by the busy CRAN repository, we also limit ourselves to using
-2 cpus, or threads, in the computation.  
+Note that the names of the list \code{risksets} are
+the same as the levels in the factor \code{state}. And that the entries in the list
+are levels of the factor \code{d}, i.e. possible transitions.
+
+Then we create a set of control parameters. Since this vignette is to
+be created by the busy CRAN repository, we limit ourselves to 5
+iterations, i.e. no more than 5 masspoints in the distribution. For
+the same reason we also limit us to 2 cpus, or threads, in the
+computation. The default is to use all the available cpus/cores.
+
 <<>>=
 ctrl <- mphcrm.control(iters=5, threads=2)
 @ 
@@ -128,9 +133,7 @@ should only explain the \code{``job''} transition. The \code{ID(id)} specifies
 that the covariate \code{id} identifies individuals. The \code{D(duration)} specifies
 that the covariate \code{duration} contains the durations of the observations. Finally,
 the \code{S(state)} term specifies that the covariate \code{state} is a factor which
-indexes into the risksets argument. Note that the names of the list \code{risksets} are
-the same as the levels in the factor \code{state}. And that the entries in the list
-are levels of the factor \code{d}, i.e. possible transitions.
+indexes into the risksets argument. 
 
 \code{mphcrm} writes diagnostic output, one line per iteration. It contains
 potentially useful information. There is a time stamp, the iteration number, the number
