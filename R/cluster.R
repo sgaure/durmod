@@ -97,8 +97,6 @@ mphloglik <- local({
   }
 })
 
-#' Internal function
-#' @param ... arguments
 #' @export
 .cloglik <- local({
   dset <- NULL

@@ -105,6 +105,7 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
       switch(timing) {
       case interval:
 	llspell[j] += log1mexp(dur*exp(logsumhaz)) - logsumhaz;
+	// NOTE: no break here!
       case exact:
       case none:
 	llspell[j] += lh[tr-1] + mup[tr-1][j];
@@ -188,7 +189,6 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       pos += npoints;
     }
     if(t >= 0) {
-      //      double *dll = &dllspell[j*npars];
       int pos = inipos;
       // complicated expression for interval timing, the derivative of llspell wrt to a parameter
       // With H the sum of hazards, L the log hazard of transition t, and d duration, we compute
@@ -197,9 +197,8 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       
       double funnyexpr = 0;
       if(timing == interval)
-	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) +
-	  expm1(lh[t]+mup[t][j]-logsumhaz);
-	//	funnyexpr = exp(lh[t]+mup[t][j])*(dur*exp(-dur*sumhaz)/expm1(-dur*sumhaz) + sumhaz);
+	funnyexpr = exp(lh[t]+mup[t][j])*(dur*exp(-dur*sumhaz)/expm1(-dur*sumhaz) + 1/sumhaz)-1.0;
+	//	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) + expm1(lh[t]+mup[t][j]-logsumhaz);
       for(int k = 0; k < nvars[t]; k++) {
 	switch(timing) {
 	case exact:
@@ -250,7 +249,7 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
 			   const double *pargs, const int totalpars, double *spellgrad) {
 
   (void) memset(spellgrad, 0, totalpars*sizeof(*spellgrad));
-
+  //  (void) memset(gkahanc, 0, totalpars*sizeof(*gkahanc));
   // compute gradient
   // we have the gradient of each llspell component in dllspell
   // Now, ll = log(sum(p_j exp(lh_j)))
@@ -275,10 +274,24 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
     int pos = 0;
     for(int t = 0; t < transitions; t++) {
       for(int k = 0; k < nvars[t]+faclevels[t]; k++) {
+	/*
+	const double c = scale*dll[pos];
+	const double tt = spellgrad[pos] + c;
+	gkahanc[pos] += (abs(spellgrad[pos]) >= abs(c)) ? 
+	    (spellgrad[pos]-tt)+c : (c - tt) + spellgrad[pos];
+	spellgrad[pos] = tt;
+	*/
 	spellgrad[pos] += scale * dll[pos];
 	pos++;
       }
       // the mu for this masspoint in this transition
+      /*
+      const double c = scale*dll[pos+j];
+      const double tt = spellgrad[pos+j] + c;
+      gkahanc[pos+j] += (abs(spellgrad[pos+j]) >= abs(c)) ? 
+	(spellgrad[pos+j]-tt)+c : (c - tt) + spellgrad[pos+j];
+      spellgrad[pos+j] = tt;
+      */
       spellgrad[pos+j] += scale*dll[pos+j];
       pos += npoints; // next transition
     }
@@ -309,6 +322,7 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
       spellgrad[npars+k] += dPdak; 
     }
   }
+  //  for(int i = 0; i < npars; i++) spellgrad[i] += gkahanc[i];
 }
 
 inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *gradblock, 
@@ -507,16 +521,16 @@ NumericVector cloglik(List dataset, List pset, List control,
   // must be static to allocate thread private
   // we could do array reduction on the gradient, but it's not supported in
   // the current C-compiler for windows on cran. So do it manually.
-  static double *lh, *totgrad, *gkahanc;
+  static double *lh, *totgrad;
   static double *spellgrad, *llspell, *dllspell; 
   int *nonzero; // only used temporarily in critical section, so not thread local
   if(dofisher) nonzero = (int*) R_alloc(totalpars, sizeof(int)); 
 
-#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad, gkahanc)
+#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad)
 #pragma omp parallel num_threads(nthreads)
   {  
     // Can't do R_alloc in threads
-    if(dograd) gkahanc = new double[gradsize]();
+    //    if(dograd) gkahanc = new double[gradsize]();
     totgrad = new double[gradsize]();
     llspell = new double[npoints];
     lh = new double[transitions];
@@ -527,9 +541,9 @@ NumericVector cloglik(List dataset, List pset, List control,
   }
 
   // Remember not to use any R-functions (or allocate Rcpp storage) inside the parallel region.
-  double kahanc = 0.0;
+  //  double kahanc = 0.0;
   int memfail = 0;
-#pragma omp parallel for reduction(+: LL) num_threads(nthreads) schedule(guided) firstprivate(kahanc)
+#pragma omp parallel for reduction(+: LL) num_threads(nthreads) schedule(guided) //firstprivate(kahanc)
   for(int spellno = 0; spellno < nspells; spellno++) {
     if(memfail > 0) continue;
     memset(llspell, 0, npoints*sizeof(*llspell));
@@ -575,12 +589,13 @@ NumericVector cloglik(List dataset, List pset, List control,
       ll = logsumofexp(npoints,llspell,logprobs);
       // for many spells we should perhaps do a compensated addition, Kahan/Neumaier?
 
-      //      LL += ll;
+      LL += ll;
+      /*
       const double y = ll - kahanc;
       const double t = LL + y;
       kahanc = (t-LL) - y;
       LL = t;
-
+      */
       
       
       if(dograd) {
@@ -588,15 +603,7 @@ NumericVector cloglik(List dataset, List pset, List control,
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
 		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad);
 	// update global gradient with spell gradient
-	for(int k = 0; k < totalpars; k++) {
-	  //	  totgrad[k] += spellgrad[k];
-
-	  const double t = totgrad[k] + spellgrad[k];
-	  gkahanc[k] += (abs(totgrad[k]) >= abs(spellgrad[k])) ? 
-	    (totgrad[k]-t)+spellgrad[k] : (spellgrad[k] - t) + totgrad[k];
-	  totgrad[k] = t;
-
-	}
+	for(int k = 0; k < totalpars; k++) totgrad[k] += spellgrad[k];
 	if(dofisher) {
 	  // update the fisher matrix from the spellgrad
 	  // we use a global fisher matrix, no omp reduction, so do it in a critical section
@@ -619,7 +626,7 @@ NumericVector cloglik(List dataset, List pset, List control,
     }
   }
 
-  if(memfail > 0) {delete [] totgrad; delete [] gkahanc; stop("Memory allocation failed");}
+  if(memfail > 0) {delete [] totgrad; stop("Memory allocation failed");}
 
   // Then set up the return value
   NumericVector ret = NumericVector::create(LL);
@@ -631,9 +638,9 @@ NumericVector cloglik(List dataset, List pset, List control,
 #pragma omp parallel num_threads(nthreads) 
     {
 #pragma omp critical
-      for(int k = 0; k < gradsize; k++) grad[k] += totgrad[k] + gkahanc[k];
+      for(int k = 0; k < gradsize; k++) grad[k] += totgrad[k];
     }
-    if(dograd) {delete [] totgrad; delete [] gkahanc;}
+    if(dograd) {delete [] totgrad;}
     ret.attr("gradient") = retgrad;
   }
 

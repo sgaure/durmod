@@ -15,8 +15,8 @@ mphcrm.control(...)
 \item newpoint.maxtime numeric. For how many seconds should a global search for a new point
   improving the likelihood be conducted before we continue with the best we have found. Defaults to
   120.
-\item callback A
-  user-specified \code{function(fromwhere, opt, spec, control,
+\item callback. A
+  user-specified \code{function(fromwhere, opt, dataset, control,
   ...)} which is called after each optimization step.  It can be
   used to report what is happening, check whatever it wants, and
   optionally stop the estimation by calling stop(). In this case,

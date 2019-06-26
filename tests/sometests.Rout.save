@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-06-25 r76738) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-06-14 r76701) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -33,37 +33,47 @@ Type 'q()' to quit R.
 8809: 3999  0.8504394  1.3854584     1     job  4.587245
 8810: 4000 -0.4080361 -1.1617422     0     job  1.589720
 > risksets <- list(c('job','program'), c('job'))
+> options(digits=3)
 > # just two iterations to save time
+> 
 > opt <- mphcrm(d ~ x1+x2+C(job,alpha)+D(duration)+S(alpha+1)+ID(id), data=dataset, risksets=risksets,
 +               control=mphcrm.control(threads=1,iters=2,callback=NULL))
 > best <- opt[[1]]
 > print(best)
 Estimate with 2 points, log-likelihood: -21023.3863
     job.x1     job.x2  job.alpha program.x1 program.x2      pargs 
- 0.7566441 -0.7417405 -0.2662034  0.8625342  0.3759226 -0.9135190 
+     0.757     -0.742     -0.266      0.863      0.376     -0.914 
 
 Proportional hazard distribution
-              prob        job    program
-point  1 0.7137197 0.15492189 0.09249743
-point  2 0.2862803 0.01894386 0.01813079
+          prob    job program
+point  1 0.714 0.1549  0.0925
+point  2 0.286 0.0189  0.0181
 > summary(best)
 $loglik
-[1] -21023.39
+[1] -21023
 
 $coefs
-                value          se          t      Pr(>|t|)
-job.x1      0.7566441 0.009642982  78.465779  0.000000e+00
-job.x2     -0.7417405 0.013262129 -55.929216  0.000000e+00
-job.alpha  -0.2662034 0.034961284  -7.614234  2.926374e-14
-program.x1  0.8625342 0.023189411  37.195174 2.094111e-281
-program.x2  0.3759226 0.023396286  16.067617  2.790888e-57
-pargs      -0.9135190 0.054778830 -16.676497  1.693323e-61
+            value      se      t  Pr(>|t|)
+job.x1      0.757 0.00964  78.47  0.00e+00
+job.x2     -0.742 0.01326 -55.93  0.00e+00
+job.alpha  -0.266 0.03496  -7.61  2.93e-14
+program.x1  0.863 0.02319  37.20 2.09e-281
+program.x2  0.376 0.02340  16.07  2.79e-57
+pargs      -0.914 0.05478 -16.68  1.69e-61
 
 $moments
-              mean    variance         sd
-job     0.11599406 0.003777954 0.06146506
-program 0.07120773 0.001129992 0.03361536
+          mean variance     sd
+job     0.1160  0.00378 0.0615
+program 0.0712  0.00113 0.0336
 
+> mphdist(best)
+          prob    job program
+point  1 0.714 0.1549  0.0925
+point  2 0.286 0.0189  0.0181
+> mphcovs(best)
+              job   program
+job      0.000996 -0.000239
+program -0.000239  0.000512
 > 
 > # Then make a state factor
 > state <- dataset[,factor(alpha+1,levels=1:2)]
@@ -74,7 +84,7 @@ program 0.07120773 0.001129992 0.03361536
 > dataset[, g := factor(sample(1:4,.N,replace=TRUE))]
 > opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(state)+ID(id), data=dataset, 
 +               risksets=risksets, control=mphcrm.control(threads=1,iters=1,callback=NULL))
-> options(digits=3)
+> 
 > summary(opt[[1]])
 $loglik
 [1] -22232
@@ -121,6 +131,20 @@ job     0.0684        0  0
 program 0.0461        0  0
 
 > 
+> # single risk
+> dataset <- dataset[state=='onprogram']
+> opt <- mphcrm(d ~ x1+x2+D(duration)+ID(id), data=dataset, 
++               control=mphcrm.control(threads=1,iters=1,callback=NULL))
+> summary(opt[[1]]$par)
+$value
+job.x1 job.x2 
+ 0.616 -0.622 
+
+$moments
+         prob    job
+point  1    1 0.0355
+
+> 
 > proc.time()
    user  system elapsed 
-   4.45    1.20    3.88 
+   3.09    1.09    2.74 

@@ -92,8 +92,8 @@ mphdist.log <- function(pset) {
 #' @export
 mphmoments <- function(pset) {
   dist <- mphdist(pset)
-  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
-  variance <- rowSums(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2))
+  mean <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*x[-1])))
+  variance <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2)))
   sd <- sqrt(variance)
   cbind(mean,variance,sd)
 }
@@ -105,8 +105,8 @@ mphmoments <- function(pset) {
 #' @export
 mphmoments.log <- function(pset) {
   dist <- mphdist.log(pset)
-  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
-  variance <- rowSums(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2))
+  mean <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*x[-1])))
+  variance <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2)))
   sd <- sqrt(variance)
   cbind(mean,variance,sd)
 }
@@ -118,7 +118,7 @@ mphmoments.log <- function(pset) {
 #' @export
 mphcovs <- function(pset) {
   dist <- mphdist(pset)
-  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
+  mean <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*x[-1])))
   crossprod(dist[,1]*(dist[,-1]-rep(mean,echo=nrow(dist))))
 }
 
@@ -129,7 +129,7 @@ mphcovs <- function(pset) {
 #' @export
 mphcovs.log <- function(pset) {
   dist <- mphdist.log(pset)
-  mean <- rowSums(apply(dist, 1, function(x) x[1]*x[-1]))
+  mean <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*x[-1])))
   crossprod(dist[,1]*(dist[,-1]-rep(mean,echo=nrow(dist))))
 }
 
@@ -138,6 +138,7 @@ mphcovs.log <- function(pset) {
 #' The Fisher matrix, typically from \code{opt[[1]]$fisher}, where \code{opt} is returned
 #' from \code{\link{mphcrm}}.
 #' @param tol tolerance for \link{geninv}
+#' @export
 se <- function(x,tol=1e-9) {
   if(is.matrix(x)) return(sqrt(diag(geninv(x))))
   if(!is.null(x$fisher)) return(sqrt(diag(geninv(x$fisher))))

@@ -144,7 +144,7 @@ mphcrm <- function(formula,data,risksets=NULL,
   id <- dataset$id
 
   if(length(unique(id)) != length(rle(as.integer(id))$values)) {
-    stop('dataset must be sorted on id')
+    stop('dataset must be sorted on ID')
   }
 
   # zero-based index of beginning of spells. padded with one after the last observation
@@ -191,9 +191,8 @@ mphcrm <- function(formula,data,risksets=NULL,
     dataset$riskset <- risksets
   } else {
     dataset$state <- 0L
-    dataset$riskset < list()
+    dataset$riskset <- list()
   }
-  
 
   pset <- makeparset(dataset,1)
 
@@ -220,8 +219,8 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' \item newpoint.maxtime numeric. For how many seconds should a global search for a new point
 #'   improving the likelihood be conducted before we continue with the best we have found. Defaults to
 #'   120.
-#' \item callback A
-#'   user-specified \code{function(fromwhere, opt, spec, control,
+#' \item callback. A
+#'   user-specified \code{function(fromwhere, opt, dataset, control,
 #'   ...)} which is called after each optimization step.  It can be
 #'   used to report what is happening, check whatever it wants, and
 #'   optionally stop the estimation by calling stop(). In this case,
@@ -526,9 +525,14 @@ fLL <- function(args, skel, dataset, ctrl) {
   -attr(mphloglik(dataset,pset,dofisher=TRUE,control=ctrl),'fisher')
 }
 
+# numerical gradient, slow
+dLL <- function(args, skel, dataset, ctrl) {
+  numDeriv::grad(LL, args, dataset=dataset, skel=skel, ctrl=ctrl)
+}
+
 # hessian, numerically from gradient, slow
 hLL <- function(args, skel, dataset, ctrl) {
-  numDeriv::jacobian(gLL,args,dataset=dataset,skel=skel,control=ctrl)
+  numDeriv::jacobian(gLL,args,dataset=dataset,skel=skel,ctrl=ctrl)
 }
 
 
@@ -589,6 +593,10 @@ ml <- function(dataset,pset,control) {
     opt$fisher <- fLL(flatten(opt$par),skel,dataset,control)
     dimnames(opt$fisher) <- list(row=nm,col=nm)
   }
+  if(isTRUE(control$numgrad)) {
+    opt$numgrad <- dLL(flatten(opt$par), skel, dataset, control)
+    names(opt$numgrad) <- nm
+  }
   if(isTRUE(control$hessian)) {
     opt$hessian <- hLL(flatten(opt$par),skel,dataset,control)
     dimnames(opt$hessian) <- list(nm,nm)
@@ -603,7 +611,7 @@ ml <- function(dataset,pset,control) {
 #' @description
 #' \code{\link{mphcrm}} parametrizes the probabilities that it optimizes.
 #' For \eqn{n+1} probabilities there are \eqn{n} parameters \eqn{a_j}, such that
-#' probability \eqn{P_i = \frac{a_i}{1+\sum_j a_j}}, where we assume that \eqn{a_0 = 0}.
+#' probability \eqn{P_i = \frac{a_i}{\sum_j \exp(a_j)}}, where we assume that \eqn{a_0 = 0}.
 #'
 #' @param a
 #' a vector of parameters
@@ -676,8 +684,12 @@ mymodelmatrix <- function(formula,mf) {
   mf <- eval.parent(mf)
 
   # Pick up the special covariates ID, D, and S
-  duration <- as.numeric(mf[[as.character(Ilist$D)]])
   id <- as.integer(mf[[as.character(Ilist$ID)]])
+  if(length(Ilist$D))
+    duration <- as.numeric(mf[[as.character(Ilist$D)]])
+  else
+    duration <- NULL
+
   state <- NULL
   if(length(Ilist$S)) {
     state <- mf[[as.character(Ilist$S)]]

@@ -17,7 +17,7 @@ p2a(p)
 \description{
 \code{\link{mphcrm}} parametrizes the probabilities that it optimizes.
 For \eqn{n+1} probabilities there are \eqn{n} parameters \eqn{a_j}, such that
-probability \eqn{P_i = \frac{a_i}{1+\sum_j a_j}}, where we assume that \eqn{a_0 = 0}.
+probability \eqn{P_i = \frac{a_i}{\sum_j \exp(a_j)}}, where we assume that \eqn{a_0 = 0}.
 }
 \examples{
 # Draw 5 parameters

@@ -79,20 +79,18 @@ print.mphcrm.pset <- function(x, ...) {
 }
 
 #' Convert a structured coefficient set to a vector
-#' @description
-#' \code{\link{mphcrm}} stores coefficients in a list, not in a vector. This is
-#' because they should be treated differently according to whether they are probabilibies
-#' proportional hazards, or coefficients for factor levels or ordinary covariates.
-#' \code{flatten} extracts them as a named vector. \code{unflatten} puts them back
-#' in structured form.
-#' @details
-#' \code{flatten}/\code{unflatten} is just a thinly disguised \code{unlist}/\code{relist}, which
-#' uses slightly more readable names.
-#' @param x
-#' parameter set as typically found in \code{opt[[1]]\$par}, where \code{opt} is
-#' returned from \code{mphcrm}.
-#' @param exclude
-#' For internal use
+#' @description \code{\link{mphcrm}} stores coefficients in a list,
+#'   not in a vector. This is because they should be treated
+#'   differently according to whether they are probabilities,
+#'   proportional hazards, or coefficients for factor levels or
+#'   ordinary covariates.  \code{flatten} extracts them as a named
+#'   vector. \code{unflatten} puts them back in structured form.
+#' @details \code{flatten}/\code{unflatten} is just a thinly disguised
+#'   \code{\link[base]{unlist]}/\code{\link[utils]{relist}}, but uses
+#'   slightly more readable names.
+#' @param x parameter set as typically found in \code{opt[[1]]\$par},
+#'   where \code{opt} is returned from \code{mphcrm}.
+#' @param exclude For internal use
 #' @export
 flatten <- function(x, exclude=attr(x,'exclude')) {
   class(x) <- setdiff(class(x),'mphcrm.pset')
