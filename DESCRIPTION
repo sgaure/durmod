@@ -17,6 +17,7 @@ Classification/JEL: C14, C15, C41
 License: Artistic-2.0
 Imports: Rcpp (>= 1.0.1), stats, utils, Formula, numDeriv, nloptr, parallel, data.table, mvtnorm
 Depends: R (>= 3.5.0)
+VignetteBuilder: knitr
 LinkingTo: Rcpp
 LazyData: TRUE
 Encoding: UTF-8

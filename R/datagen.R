@@ -59,7 +59,7 @@
 #' data.table::setDTthreads(1)  # avoid screams from cran-testing
 #' dataset <- datagen(5000,80)
 #' print(dataset)
-#' risksets <- list(c("job","program"), "job")
+#' risksets <- list(unemp=c("job","program"), onprogram="job")
 #' # just two iterations to save time
 #' Fit <- mphcrm(d ~ x1+x2 + ID(id) + D(duration) + S(alpha+1) + C(job,alpha),
 #'           data=dataset, risksets=risksets,
@@ -90,5 +90,7 @@ datagen <- function(N,censor=80) {
   }, by=id]
   spells$d <- factor(spells$d,levels=0:2)
   levels(spells$d) <- c('none','job','program')
+  spells$state <- factor(spells$alpha+1,levels=1:2)
+  levels(spells$state) <- c('unemp', 'onprogram')
   spells
 }

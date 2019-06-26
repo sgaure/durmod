@@ -1,0 +1,142 @@
+\documentclass{amsart}
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Overview of durmod}
+%\VignetteKeyword{Mixed proportion hazard}
+%\VignetteKeyword{Competing risk}
+
+\usepackage[utf8]{inputenc}
+
+\newcommand{\strong}[1]{{\normalfont\fontseries{b}\selectfont #1}}
+\let\pkg=\strong
+\newcommand\code{\bgroup\@codex}
+\def\@codex#1{{\normalfont\ttfamily\hyphenchar\font=-1 #1}\egroup}
+
+\newcommand{\bma}{\begin{bmatrix}}
+\newcommand{\ema}{\end{bmatrix}}
+
+
+
+\title{Overview of \pkg{durmod}}
+
+\author{Simen Gaure}
+\address{Ragnar Frisch Centre for Economic Research, Oslo, Norway}
+\date{June 26, 2019}
+
+\begin{document}
+
+\section{A dataset}
+The \pkg{durmod} package fits a mixed proportional hazard model with competing risks
+to duration data.
+
+Let's have a look at a simulated dataset:
+<<data>>=
+library(durmod)
+data(durdata)
+head(durdata,15)
+@ 
+
+There is an \code{id} which identifies an individual. 
+The individuals have been through a process. At the outset they are
+all unemployed, this is recorded by the factor \code{state}. As unemployed
+they face two hazards, i.e. probabilites per time unit. 
+Either they can get a job, or they can enter a labour market programme, like
+a subsidized wage job or similar.
+
+These transitions are recorded in the \code{d} factor. In our simulation,
+individuals who transition to \code{``job''}, exit the dataset. If a transition
+to labour market program occurs, the state variable changes to \code{``onprogram''},
+and the dummy \code{alpha} changes to 1.
+It is also possible to do a \code{``none''} transition, this is typically necessary
+if a covariate changes, since the model has piecewise constant explanatory covariates.
+Also, when on a programme, one of the hazards disappear, it is no longer possible to
+make a transition to a programme, we're already on it.
+
+Each row of the dataset has a \code{duration}, this is the time until the transition
+marked in \code{d} happens.
+
+In our dataset, we limit the total duration for each individudal to 80. That means
+that some individuals do not exit the dataset by doing a transition, but with a \code{d==''none''}.
+
+\section{The mixed proportional hazard competing risk model}
+There are two covariates, \code{x1} and \code{x2}. These are assumed to influence
+the two hazards.  We also assume the \code{alpha} enters the hazard.
+
+We model the baseline hazard for transition to job as,
+\begin{equation}
+  h^j(\mu^j) = \exp(x_1\beta_1^j + x_2\beta_2^j + \alpha\beta_3^j + \mu^j)
+\end{equation}
+
+The hazard for transition to programme is,
+\begin{equation}
+  h^p(\mu^p) = \exp(x_1\beta_1^p + x_2\beta_2^p + \mu^p)
+\end{equation}
+
+Here we have included an ``intercept'', a \(\mu\), it could equally well have been
+written as a multiplicative factor \(\exp(\mu)\) instead. This
+\(\mu\)-term is the ``proportional hazard''. 
+
+Taken together, all the observations for an individual yields an individual likelihood
+for individual \(i\). We call it
+\(\ell_i(\mu)\), where \(\mu\) is the vector \((\mu^j, \mu^p)\).
+
+However, there is a mixture part also. The \(\mu\)-vector is stochastic with a
+discrete distribution.  That is, there is an \(n\), a set of probabilites \(p_j\), 
+and vectors \(\mu_j\), for \(j=1..n\). Of course, we have \(\sum_{j=1}^n p_j = 1\).
+
+The mixture likelihood for an individual \(i\) is \(L_i = \sum_j p_j \ell(\mu_j)\).
+
+The log-likelihood for the dataset is thus, \(L=\sum_i \log(L_i)\).
+
+The \(L\) must be maximized with respect to the five \(\beta\)s, the \(n\), the probabilites \(p_j\), 
+and the vectors \(\mu_j\) for \(j=1..n\).
+
+\section{Estimation}
+The estimation proceeds as follows. We start with \(n=1\), estimate
+the \(\beta\)s and the two \(\mu\)s.  Then we increase \(n\) to 2, let
+\(p_2\) be a small probability, and find a vector \(\mu_2\) which
+increases the likelihood.  This is used as starting point for a new likelihood maximization.
+Then \(n\) is increased to \(3\), and we proceed in this fashion, adding masspoints to the
+distribution until we are no longer able to increase the likelihood.
+
+In \pkg{durmod} we use the \code{mphcrm} function for this purpose. Here is an example.
+First we create a ``riskset'', a specification of which hazards are experienced in various states:
+<<>>=
+risksets <- list(unemp=c('job','program'), program='job')
+@ 
+
+Then we create a set of control parameters, since this is a demonstration dataset, we limit
+ourselves to 5 iterations, i.e. no more than 5 masspoints in the distribution. Since
+this vignette is to be created by the CRAN repository, we also limit ourselves to using
+2 cpus, or threads, in the computation.
+<<>>=
+ctrl <- mphcrm.control(iters=5, threads=2)
+@ 
+
+Then we are ready to estimate. There are a couple of special terms in the formula we use:
+<<>>=
+set.seed(42) # for reproducibility
+opt <- mphcrm(d ~ x1 + x2 + 
+                C(job, alpha) + ID(id) + D(duration) + S(state), 
+              data=durdata, control=ctrl)
+@ 
+
+Note that \code{mphcrm} writes diagnostic output, one line per iteration. It contains
+potentially useful information. There is a time stamp, the iteration number, the number
+of masspoints, the resulting log likelihood, the 2-norm of the gradient, the smallest
+probability in the masspoint distribution, the reverse condition number of the Fisher matrix,
+the entropy of the masspoint distribution, and the time used in the iteration.
+
+\code{mphcrm} returns a list with one entry for each iteration, it has a special
+print method which sums up the estimation in reverse order:
+<<>>=
+print(opt)
+@ 
+
+Unless something has gone wrong, you will normally be interested in the first entry,
+the one with the largest likelihood. We can look at a summary:
+<<>>=
+best <- opt[[1]]
+summary(best)
+@ 
+\end{document}
+
