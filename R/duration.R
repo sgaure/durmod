@@ -115,7 +115,7 @@
 #' best <- Fit[[1]]
 #' summary(best)
 #' @seealso A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}},
-#' and in the vignette \code{vignette("mphcrmwhat")}
+#' and in the vignette \code{vignette("whatmph")}
 #' @export
 mphcrm <- function(formula,data,risksets=NULL,
                    timing=c('exact','interval','none'),
@@ -300,7 +300,7 @@ mphcrm.callback <- local({
     grd <- if(!is.null(opt$gradient)) sqrt(sum(opt$gradient^2)) else NA
     p <- a2p(opt$par$pargs)
     cat(jobname,format(now,control$tspec), 
-        sprintf('i:%d pts:%d L:%.4f g:%.3g mp:%.5g rcond:%.2g e:%.4f t:%s\n',
+        sprintf('i:%d p:%d L:%.4f g:%.3g mp:%.5g rc:%.2g e:%.4f t:%s\n',
                 control$mainiter, length(opt$par$pargs)+1, opt$value, grd, min(p), rc, -sum(p*log(p)),
                 tdiff))
     #  if(rc < sqrt(.Machine$double.eps)) {message(sprintf('%s  ***bad condition: %.2e',jobname,rc)); return(FALSE)}
