@@ -128,5 +128,5 @@ summary(best)
 }
 \seealso{
 A description of the dataset is available in \code{\link{datagen}} and \code{\link{durdata}},
-and in the vignette \code{vignette("mphcrmwhat")}
+and in the vignette \code{vignette("whatmph")}
 }
