@@ -13,7 +13,7 @@ best <- opt[[1]]
 print(best)
 summary(best)
 mphdist(best)
-mphcovs(best)
+mphcov(best)
 
 # Then make a state factor
 state <- dataset[,factor(alpha+1,levels=1:2)]

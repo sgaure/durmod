@@ -4,9 +4,9 @@
 \alias{mphdist}
 \alias{mphdist.log}
 \alias{mphmoments}
+\alias{mphcov}
 \alias{mphmoments.log}
-\alias{mphcovs}
-\alias{mphcovs.log}
+\alias{mphcov.log}
 \title{Extract the mixed proportional hazard distribution}
 \usage{
 mphdist(pset)
@@ -15,11 +15,11 @@ mphdist.log(pset)
 
 mphmoments(pset)
 
+mphcov(pset)
+
 mphmoments.log(pset)
 
-mphcovs(pset)
-
-mphcovs.log(pset)
+mphcov.log(pset)
 }
 \arguments{
 \item{pset}{a parameter set of class \code{"mphcrm.pset"}, typically
@@ -39,11 +39,11 @@ Various functions for extracting the proportional hazard distribution.
 
 \code{mphmoments} returns the first and second moments of the hazard distribution.
 
+\code{mphcov} returns the variance/covariance matrix of the hazard distribution.
+
 \code{mphmoments.log} returns the first and second moments of the log hazard distribution.
 
-\code{mphcovs} returns the variance/covariance matrix of the hazard distribution.
-
-\code{mphcovs.log} returns the variance/covariance matrix of the log hazard distribution.
+\code{mphcov.log} returns the variance/covariance matrix of the log hazard distribution.
 }
 \examples{
 # load a dataset and a precomputed fitted model
@@ -51,5 +51,5 @@ data(durdata)
 best <- fit[[1]]
 mphdist(best)
 mphmoments(best)
-mphcovs.log(best)
+mphcov.log(best)
 }

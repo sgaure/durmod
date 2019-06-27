@@ -84,6 +84,8 @@ datagen <- function(N,censor=80) {
     vv <- mvtnorm::rmvnorm(.N, mean=means, sigma=cov2)
     list(vv[,1],vv[,2])
   }]
+#  print(persons[,.(expjob=mean(exp(ve)), expprog=mean(exp(vp)))])
+#  print(persons[,cov(cbind(ve=exp(ve),vp=exp(vp)))])
   # create spells
   spells <- persons[,{
     genspell(x1,x2,ve,vp,censor)

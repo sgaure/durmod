@@ -59,7 +59,9 @@ make a transition to a programme, we're already on it.
 Each row of the dataset has a \code{duration}, this is the time until the transition
 marked in \code{d} occurs.
 
-In our dataset, we limit the total duration for each individudal to 80. That means
+In our dataset, we we have an observation period of 80, and the individuals enter
+the dataset at a random time in this period. When they reach the end of the observation
+period they are no longer observed. That means
 that some individuals do not exit the dataset by doing a transition, but with a \code{d=="none"}.
 
 \section{The mixed proportional hazard competing risk model}
@@ -132,12 +134,12 @@ are levels of the factor \code{d}, i.e. possible transitions.
 
 Then we create a set of control parameters. Since this vignette is to
 be created by the busy CRAN repository, we limit ourselves to 6
-iterations, i.e. no more than 6 masspoints in the distribution. For
-the same reason we also limit to 2 cpus, or threads, in the
+iterations, i.e. no more than 4 masspoints in the distribution. For
+the same reason we also limit to 1 cpu, or threads, in the
 computation. The default is to use all the available cpus/cores.
 
 <<>>=
-ctrl <- mphcrm.control(iters=6, threads=2)
+ctrl <- mphcrm.control(iters=4, threads=1)
 @ 
 
 Then we are ready to estimate. There are a couple of special terms in the formula we use:
@@ -180,14 +182,38 @@ It has three entries, \code{"loglik"}, which is simply the log likelihood,
 coefficients. And \code{"moments"}, which is the first and second moments of
 the proportional hazard distribution.
 
-If we had limited to 5 masspoints, the \code{alpha} estimate would be negative, i.e. 
-the labour market programme has a negative effect on the hazard for getting a job.
-The reader may run the example with a maximum of 15 iterations to obtain a positive effect.
-
 We can see how the \code{alpha} changes with more points:
 <<>>=
 t(sapply(opt, function(o) summary(o)$coefs["job.alpha",]))
 @ 
+
+Here is a pre-made fit:
+<<>>=
+summary(fit[[1]])
+@ 
+
+It can be remade with the commands:
+<<eval=FALSE>>=
+library(durmod)
+data(durdata)
+newfit <- eval(attr(fit,'call'))
+@ 
+
+There are also some functions for extracting the proportional hazard distribution:
+<<>>=
+mphdist(fit[[1]])
+# and the moments,
+mphmoments(fit[[1]])
+# and covariance matrix
+mphcov(fit[[1]])
+@ 
+The true values used to generate the dataset was 
+\code{job.x1=1}, \code{job.x2=-1}, \code{job.alpha=0.2}, \code{program.x1=1}, and
+\code{program.x2=0.5}. 
+The unobserved distribution, the proportional hazards,
+had means: \code{job: 0.135}, \code{program: 0.0826}. Their variances were 0.0273 and 0.0113.
+Their covariance was 0.00656. We see that our estimates are in the vicinity.
+
 
 \section{More options}
 \subsection{Interval timing}
