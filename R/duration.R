@@ -146,7 +146,8 @@ mphcrm <- function(formula,data,risksets=NULL,
 
   state <- dataset$state
   hasriskset <- !is.null(risksets)
-  if(hasriskset && is.null(state)) warning("riskset is specified, but no state S()")
+  if(hasriskset && is.null(state)) 
+    warning("Riskset is specified, but no state S(). All risks are assumed to be present.")
   if(is.null(state)) hasriskset <- FALSE
 
   if(hasriskset) {

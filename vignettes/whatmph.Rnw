@@ -238,6 +238,11 @@ There are many control parameters. Here are some you may want to tinker with.
   should not give it all your cpus, but save one or two for your other work. If one of the 16 threads
   in \code{mphcrm} shares a cpu with your mail program trying to sort your inbox, the speed may be
   halved.
+
+  For creation of the Fisher matrix, \code{mphcrm} calls into BLAS from a single thread. For
+  large datasets with many coefficients to estimate, there can be some benefit from linking R
+  with a highly optimized and parallel BLAS, like mkl from Intel. See the R documentation for how
+  to do this.
 \item{\code{iters.}} An integer. The number of iterations to perform. The estimation may stop earlier, if
   neither the log likelihood \emph{nor} the entropy improves. The default is 15.
 \item{\code{ll.improve.}} A numeric. The amount the log-likelihood must increase with to be considered an
