@@ -133,7 +133,7 @@ the same as the levels in the factor \code{state}. And that the entries in the l
 are levels of the factor \code{d}, i.e. possible transitions.
 
 Then we create a set of control parameters. Since this vignette is to
-be created by the busy CRAN repository, we limit ourselves to 6
+be created by the busy CRAN repository, we limit ourselves to 4
 iterations, i.e. no more than 4 masspoints in the distribution. For
 the same reason we also limit to 1 cpu, or threads, in the
 computation. The default is to use all the available cpus/cores.
