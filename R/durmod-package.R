@@ -11,6 +11,7 @@
 #' which is initialized from the environment variable \env{DURMOD_THREADS}, \env{OMP_THREAD_LIMIT},
 #' \env{OMP_NUM_THREADS} or \env{NUMBER_OF_PROCESSORS}, or parallel::detectCores() upon loading the package.
 #' 
+#' There is a vignette (\code{vignette("whatmph")}) with more details about \pkg{durmod}.
 #' @references
 #' Gaure, S., K. Røed and T. Zhang (2007) \cite{Time and causality: A Monte-Carlo Assessment
 #'   of the timing-of-events approach}, Journal of Econometrics 141(2), 1159-1195.

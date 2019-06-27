@@ -23,12 +23,17 @@
 \date{June 26, 2019}
 
 \begin{document}
-
+\begin{abstract}
+This is a walkthrough of an estimation of a generated dataset with the \pkg{durmod} package.
+Also, various tunable parameters and details are provided.
+\end{abstract}
+\maketitle
 \section{A dataset}
 The \pkg{durmod} package fits a mixed proportional hazard model with competing risks
-to duration data.
+to duration data.  The model is the one from \cite{GRK07}.
 
-Let's have a look at a generated dataset which simulates an unemployment register.
+Let's have a look at a generated dataset which simulates an unemployment register with
+two competing risks.
 <<data>>=
 library(durmod)
 data(durdata)
@@ -43,10 +48,10 @@ Either they can get a job, or they can enter a labour market programme, like
 a subsidized wage job or similar.
 
 These transitions are recorded in the \code{d} factor. In our simulation,
-individuals who transition to \code{``job''}, exit the dataset. If a transition
-to labour market program occurs, the state variable changes to \code{``onprogram''},
+individuals who transition to \code{"job"}, exit the dataset. If a transition
+to labour market programme occurs, the state variable changes to \code{"onprogram"},
 and the dummy \code{alpha} changes to 1.
-It is also possible to do a \code{``none''} transition, this is typically necessary
+It is also possible to do a \code{"none"} transition, this is typically necessary
 if a covariate changes, since the model has piecewise constant explanatory covariates.
 Also, when on a programme, one of the hazards disappear, it is no longer possible to
 make a transition to a programme, we're already on it.
@@ -55,7 +60,7 @@ Each row of the dataset has a \code{duration}, this is the time until the transi
 marked in \code{d} occurs.
 
 In our dataset, we limit the total duration for each individudal to 80. That means
-that some individuals do not exit the dataset by doing a transition, but with a \code{d==''none''}.
+that some individuals do not exit the dataset by doing a transition, but with a \code{d=="none"}.
 
 \section{The mixed proportional hazard competing risk model}
 There are two covariates, \code{x1} and \code{x2}. These are assumed to influence
@@ -75,11 +80,27 @@ Here we have included an ``intercept'', a \(\mu\), it could equally well have be
 written as a multiplicative factor \(\exp(\mu)\) instead. This
 \(\exp(\mu)\)-term is the ``proportional hazard''. 
 
-Taken together, all the observations for an individual yields an individual likelihood
-for individual \(i\). We call it
-\(\ell_i(\mu)\), where \(\mu\) is the vector \((\mu^j, \mu^p)\).
+The likelihood for a single observation \(k\) consists of two parts.  Let 
+\(H(\mu) = h^j(\mu^j) + h^p(\mu^p)\) be the sum of the hazards, where
+\(\mu\) is the vector \((\mu^j, \mu^p)\).
 
-However, there is a mixture part also, designed to account for unobserved individual
+For an observation \(k\) there is 
+a survival probability/density up until the transition:
+\begin{equation}\label{survprob}
+s_k(\mu) = \exp(-t_k H(\mu)), 
+\end{equation}
+where \(t_k\) is the duration of the period.
+
+If there is a transition, \(s(\mu)\) is multiplied by the transition hazard, \(h^d(\mu)\), where
+\(d\) is either \(p\) or \(j\). If there is no transition, \(h^d(\mu)\) is taken to be 1.
+Taken together, all the observations for an individual \(i\) yields an individual likelihood.
+We call it \(\ell_i(\mu)\).
+\begin{equation}
+  \ell_i(\mu) = \prod_{k\in K_i} h^{d_k}(\mu) s_k(\mu),
+\end{equation}
+where \(K_i\) is the set of observations for individual \(i\).
+
+However, there is also a mixture part, designed to account for unobserved individual
 heterogeneity. The \(\mu\)-vector is stochastic with a
 discrete distribution.  That is, there is an \(n\), a set of probabilites \(p_j\), 
 and vectors \(\mu_j\), for \(j=1..n\). Of course, we have \(\sum_{j=1}^n p_j = 1\).
@@ -129,16 +150,16 @@ opt <- mphcrm(d ~ x1 + x2 +
 
 The left hand side of the formula, \code{d}, is the outcome, the transition that is taken.
 The \code{C(job, alpha)} term is a list of conditional covariates, the \code{alpha}
-should only explain the \code{``job''} transition. The \code{ID(id)} specifies
+should only explain the \code{"job"} transition. The \code{ID(id)} specifies
 that the covariate \code{id} identifies individuals. The \code{D(duration)} specifies
 that the covariate \code{duration} contains the durations of the observations. Finally,
 the \code{S(state)} term specifies that the covariate \code{state} is a factor which
-indexes into the risksets argument. 
+indexes into the \code{risksets} argument. 
 
 \code{mphcrm} writes diagnostic output, one line per iteration. It contains
 potentially useful information. There is a time stamp, the iteration number, the number
 of masspoints, the resulting log likelihood, the 2-norm of the gradient, the smallest
-probability in the masspoint distribution, the reverse condition number of the Fisher matrix,
+probability in the masspoint distribution, the reciprocal condition number of the Fisher matrix,
 the entropy of the masspoint distribution, and the time used in the iteration.
 
 \code{mphcrm} returns a list with one entry for each iteration, it has a special
@@ -154,9 +175,9 @@ best <- opt[[1]]
 summary(best)
 @ 
 
-It has three entries, \code{``loglik''}, which is simply the log likelihood,
-\code{``coefs''} which is the values and standard errors of the estimated
-coefficients. And \code{``moments''}, which is the first and second moments of
+It has three entries, \code{"loglik"}, which is simply the log likelihood,
+\code{"coefs"} which is the values and standard errors of the estimated
+coefficients. And \code{"moments"}, which is the first and second moments of
 the proportional hazard distribution.
 
 If we had limited to 5 masspoints, the \code{alpha} estimate would be negative, i.e. 
@@ -175,12 +196,16 @@ in other applications we only have a time interval when the transition is known 
 place. The data above is actually a prime example, perhaps we only have labour data on a monthly basis.
 When a transition takes place, it is only registered at the end of the month, and there is no
 record of the day. In this case, the \code{duration} would be 1 for every observation, and one
-should use the \code{timing="interval"} argument in \code{mphcrm}.  This model is
-notoriously difficult to estimate because the likelihood involves ``doubly exponential'' 
-expressions of the type \(1-\exp(-\exp(x))\), which are numerically challenging.
+should use the \code{timing="interval"} argument in \code{mphcrm}.  The observation likelihood
+is replaced by,
+\begin{equation}
+h^{d_k}(\mu) \exp(-t_k H(\mu)) \frac{1-\exp(-t_k H(\mu))}{H(\mu)}.
+\end{equation}
+It is the fractional part which distinguishes it from the exact model.
 
-If the hazards are small, 1-2\% per time unit, the difference between the interval and exact model
-are quite small, so one may opt for using the exact model instead.
+If the hazards are small and we use unit intervals, 
+the difference between the interval and exact model is quite small, so
+one may opt for using the exact model instead.
 
 \subsection{No timing}
 In some applications there isn't any time. A transition occurs, or not. In this case
@@ -193,14 +218,26 @@ internally \code{mphcrm} does not create a large model matrix filled with dummy 
 that factors with many levels is quite fast to estimate.
 
 \section{Control parameters}
-There are many control parameters. Here are some one may want to tinker with.
+There are many control parameters. Here are some you may want to tinker with.
 \begin{itemize}
 \item{\code{threads.}} An integer. The number of parallel threads used
   by \code{mphcrm}. The default is taken from
   \code{getOption("durmod.threads")}, which is initialized from the
   environment variable \code{DURMOD\_THREADS}, \code{OMP\_NUM\_THREADS},
   \code{OMP\_THREAD\_LIMIT}, \code{NUMBER\_OF\_PROCESSORS}, or else from
-  \code{parallel::detectCores()}.
+  \code{parallel::detectCores()}. 
+  
+  It is not always true that the estimation
+  runs twice as fast on twice as many cpus. This depends on the cpu- and
+  memory architecture of your computer, as well as on the implementation of OpenMP in
+  the compiler used to compile the C++ parts of \pkg{durmod}. Besides, not all parts
+  of \pkg{durmod} run in parallel, so by Amdahl's law you may not expect linear speedup when the number
+  of cpus tends to infinity.
+
+  Also, if you intend to use your computer for something else while \code{mphcrm} runs, you
+  should not give it all your cpus, but save one or two for your other work. If one of the 16 threads
+  in \code{mphcrm} shares a cpu with your mail program trying to sort your inbox, the speed may be
+  halved.
 \item{\code{iters.}} An integer. The number of iterations to perform. The estimation may stop earlier, if
   neither the log likelihood \emph{nor} the entropy improves. The default is 15.
 \item{\code{ll.improve.}} A numeric. The amount the log-likelihood must increase with to be considered an
@@ -220,10 +257,19 @@ There are many control parameters. Here are some one may want to tinker with.
   it has terminated, either because you don't want to wait, or because it seems to have run astray,
   the default behaviour for \code{mphcrm} is to catch the interrupt, and return gracefully with the
   result of the estimation so far. This behaviour can be switched off with \code{trap.interrupt=FALSE}.
-\item{\code{cluster.}} A cluster from package \code{parallel} or \code{snow}. The dataset will be
+\item{\code{cluster.}} Cluster specification from package \pkg{parallel} or \pkg{snow}.
+  In addition to utilizing all the cores/cpus on a computer, \code{mphcrm} may also
+  spread across several computers. It supports running on a cluster 
+  from package \code{parallel} or \code{snow}. The dataset will be
   split among the cluster nodes, with approximately equally many observations on each. The nodes will
   then do their share of the likelihood computations. If using a cluster, the \code{threads} parameter will
   be the number of cpus used on each cluster node.
+  In general, when using parallelization, one should make sure that the cpus are not overbooked and that
+  the nodes you are running on are approximately equally fast. 
 \end{itemize}
+
+\bibliographystyle{amsplain}
+\bibliography{biblio}
+
 \end{document}
 

@@ -274,24 +274,10 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
     int pos = 0;
     for(int t = 0; t < transitions; t++) {
       for(int k = 0; k < nvars[t]+faclevels[t]; k++) {
-	/*
-	const double c = scale*dll[pos];
-	const double tt = spellgrad[pos] + c;
-	gkahanc[pos] += (abs(spellgrad[pos]) >= abs(c)) ? 
-	    (spellgrad[pos]-tt)+c : (c - tt) + spellgrad[pos];
-	spellgrad[pos] = tt;
-	*/
 	spellgrad[pos] += scale * dll[pos];
 	pos++;
       }
       // the mu for this masspoint in this transition
-      /*
-      const double c = scale*dll[pos+j];
-      const double tt = spellgrad[pos+j] + c;
-      gkahanc[pos+j] += (abs(spellgrad[pos+j]) >= abs(c)) ? 
-	(spellgrad[pos+j]-tt)+c : (c - tt) + spellgrad[pos+j];
-      spellgrad[pos+j] = tt;
-      */
       spellgrad[pos+j] += scale*dll[pos+j];
       pos += npoints; // next transition
     }
@@ -322,7 +308,6 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
       spellgrad[npars+k] += dPdak; 
     }
   }
-  //  for(int i = 0; i < npars; i++) spellgrad[i] += gkahanc[i];
 }
 
 inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *gradblock, 

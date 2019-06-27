@@ -5,8 +5,7 @@
 \title{Estimate a mixed proportional hazard model}
 \usage{
 mphcrm(formula, data, risksets = NULL, timing = c("exact", "interval",
-  "none"), subset, na.action, control = mphcrm.control(),
-  cluster = NULL)
+  "none"), subset, na.action, control = mphcrm.control())
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.
@@ -57,13 +56,6 @@ names matching the levels of \code{state}.}
 \item{na.action}{For handling of missing cases, similar to \code{\link{lm}}.}
 
 \item{control}{List of control parameters for the estimation. See \code{\link{mphcrm.control}}.}
-
-\item{cluster}{A cluster specification from package \pkg{parallel} or \pkg{snow}. There is some
-overhead in running on a cluster, so it is primarily intended for very large datasets. If you have
-more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=n)} instead.
-
-When using a cluster, the \code{control[['threads']]} parameter is the number of threads on each node.
-Make sure you don't run too many threads on each node, that will slow things down dramatically.}
 }
 \value{
 A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be

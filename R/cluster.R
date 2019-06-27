@@ -1,8 +1,10 @@
-prepcluster <- function(cluster,dset,control) {
+prepcluster <- function(dset,control) {
   # split the dataset to the cluster
   # evenly on spells, but so that they get approx the same number
   # of observations each
   # make it temporarily 1-based, easier in R
+  cluster <- control$cluster
+  
   spellidx <- dset$spellidx+1
   K <- length(parallel::clusterCall(cluster, function() 1))
   if(K == 1) {message('cluster of size 1 ignored'); return()}
@@ -45,7 +47,9 @@ prepcluster <- function(cluster,dset,control) {
         if(!is.null(x)) attr(f,'x') <- x[obsvec]
         f
       })
-      list(mat=mat,faclist=faclist)
+      m <- list(mat=mat,faclist=faclist)
+      attributes(m) <- attributes(dd)
+      m
     })
     list(data=data,d=d, timing=dset$timing, id=id, 
          spellidx=NULL, duration=duration, state=state, riskset=dset$riskset)

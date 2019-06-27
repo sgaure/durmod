@@ -81,13 +81,6 @@
 #' For handling of missing cases, similar to \code{\link{lm}}.
 #' @param control
 #' List of control parameters for the estimation. See \code{\link{mphcrm.control}}.
-#' @param cluster
-#' A cluster specification from package \pkg{parallel} or \pkg{snow}. There is some
-#' overhead in running on a cluster, so it is primarily intended for very large datasets. If you have
-#' more than one cpu on a machine, use \code{control=\link{mphcrm.control}(threads=n)} instead.
-#'
-#' When using a cluster, the \code{control[['threads']]} parameter is the number of threads on each node.
-#' Make sure you don't run too many threads on each node, that will slow things down dramatically.
 #' @return
 #' A list, one entry for each iteration. Ordered in reverse order. Ordinarily you will be
 #' interested in the first entry.
@@ -126,7 +119,7 @@
 #' @export
 mphcrm <- function(formula,data,risksets=NULL,
                    timing=c('exact','interval','none'),
-                   subset, na.action, control=mphcrm.control(),cluster=NULL) {
+                   subset, na.action, control=mphcrm.control()) {
 
   timing <- match.arg(timing)
   F <- formula
@@ -198,7 +191,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 
   # reset timer
   if(is.null(control$callback)) control$callback <- function(...) {}
-  if(!is.null(cluster)) {prepcluster(cluster,dataset,control); on.exit(cleancluster(cluster))}
+  if(!is.null(control$cluster)) {prepcluster(dataset,control); on.exit(cleancluster(control$cluster))}
 
   z <- pointiter(dataset,pset,control)
 
@@ -246,7 +239,8 @@ mphcrm.control <- function(...) {
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
-               callback=mphcrm.callback)
+               callback=mphcrm.callback,
+               cluster=NULL)
   args <- list(...)
   bad <- !(names(args) %in% names(ctrl))
   if(any(bad)) {message("unknown control parameter(s): ", paste(names(args)[bad], collapse=' '))}
