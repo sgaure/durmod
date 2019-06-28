@@ -81,8 +81,9 @@ error would still be dubious.
 
 There is no obvious way to avoid this kind of problems. The simple reason is
 that the method requires us to add new mixture points until we no
-longer can improve the likelihood. That is, the final point we add
-will not improve the likelihood, or improve it very little. That is,
+longer can improve the likelihood. In addition, with competing risks
+there will be points where the hazard for one transition is zero (or close), whereas
+the others is positive. This is,
 almost by definition, a recipe for getting a degenerate
 Hessian/Fisher-matrix, which means that one or
 more of the standard errors will suffer.  Fortunately it is the 
