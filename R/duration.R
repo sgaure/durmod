@@ -236,7 +236,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=15,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
+               method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=1e-3, jobname='mphcrm', 
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
@@ -417,42 +417,22 @@ optprobs <- function(dataset,pset,control) {
 }
 
 optdist <- function(dataset,pset,control) {
+  # find position of the distribution
+  val <- flatten(pset)
+  distpos <- grep('(\\.mu[0-9]+|pargs[0-9]*)$',names(val))
+
   dfun <- function(a) {
-    n <- length(pset$pargs)+1
-    pset$pargs[] <- a[seq_len(n-1)]
-    pos <- n
-    for(i in seq_along(pset$parset)) {
-      pset$parset[[i]]$mu[] <- a[pos:(pos+n-1)]
-      pos <- pos+n
-    }
-    -mphloglik(dataset,pset,control=control)
+    val[distpos] <- a
+    -mphloglik(dataset,unflatten(val),control=control)
   }
   gdfun <- function(a) {
-    n <- length(pset$pargs)+1
-    pset$pargs[] <- a[seq_len(n-1)]
-    pos <- n
-    usepos <- seq_len(n-1)
-    for(i in seq_along(pset$parset)) {
-      pset$parset[[i]]$mu[] <- a[pos:(pos+n-1)]
-      usepos <- c(usepos,pos:(pos+n-1))
-      pos <- pos+n
-    }
-    -attr(mphloglik(dataset,pset,dogradient=TRUE, control=control),'gradient')[usepos]
+    val[distpos] <- a
+    -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, control=control),'gradient')[distpos]
   }
 
-
-  args <- c(pset$pargs,sapply(pset$parset, function(pp) pp$mu))
-#  message('optimize dist')
-  dopt <- optim(args,dfun,gdfun,method='BFGS',control=list(trace=0,REPORT=100))
-  n <- length(pset$pargs)
-#  message('new probs',sprintf(' %.7f',a2p(dopt$par[1:n])), ' value: ',dopt$value)
-  pset$pargs[] <- dopt$par[seq_len(n)]
-  pos <- n+1
-  for(i in seq_along(pset$parset)) {
-    pset$parset[[i]]$mu[] <- dopt$par[pos:(pos+n)]
-    pos <- pos+n+1
-  }
-  dopt$par <- pset
+  dopt <- optim(val[distpos],dfun,gdfun,method='BFGS',control=list(trace=0,REPORT=100))
+  val[distpos] <- dopt$par
+  dopt$par <- unflatten(val)
   control$callback('dist',dopt,dataset,control)
   pset
 }
@@ -462,8 +442,6 @@ newpoint <- function(dataset,pset,value,control) {
   pr <- a2p(pset$pargs)
   newprob <- if(gdiff) 0 else control$newprob
   newpr <- c( (1 - newprob)*pr, newprob)
-#  newpr <- newpr/sum(newpr)
-  #  newpr <- c(pr,0)
   newset <- makeparset(dataset,length(pr)+1,pset)
   newset$pargs[] = p2a(newpr)
   np <- length(newpr)

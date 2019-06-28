@@ -276,8 +276,21 @@ There are many control parameters. Here are some you may want to tinker with.
   neither the log likelihood \emph{nor} the entropy improves. The default is 15.
 \item{\code{ll.improve.}} A numeric. The amount the log-likelihood must increase with to be considered an
   improvement. The default is 0.001.
-\item{\code{e.improve}} A numeric. The amount the entropy of the hazard distribution must increase with
+\item{\code{e.improve.}} A numeric. The amount the entropy of the hazard distribution must increase with
   to be considered an improvement. The default is 0.001.
+\item{\code{newprob.}} A numeric. When searching for a new masspoint, new probability is added to
+  the distribution with a small probability, then a search is done for a location for this probability 
+  which increases the likelihood. \code{newprob} is this small probability. The default is 0.001.
+  If the search fails, the new probability is set to zero, and a search for a positive directional
+  derivative of the likelihood (in the direction of positive probability) is done.  The reason
+  we don't search for the derivative directly is that it tends to find unfavourable points, typically
+  duplicates of other points which happen to have a positive derivative due to numerical inaccuracy.
+\item{\code{minprob.}} A numeric. Masspoints with probability below this are removed. The default
+  is \(10^{-20}\).
+\item{\code{eqtol.}} A numeric. It sometimes happens that two location points in the mixed proportional
+  hazard distribution turns out to be equal. One of them can then be removed. \code{eqtol} is the
+  threshold below which the \(\ell^\infty\) distance between two location points is so small that the
+  two points are thought to be equal. The default is 0.0001.
 \item{\code{callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
   it is possible to write your own. It will replace the default callback (which you can call from your function).
   In this way you can e.g. get diagnostics on particular coefficients, save intermediate results
