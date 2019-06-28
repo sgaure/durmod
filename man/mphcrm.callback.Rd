@@ -39,7 +39,7 @@ to file, you may end up saving the entire dataset.
 callback <- function(fromwhere, opt, dataset, control, ...) {
   # call the standard callback to print a diagnostic line
   mphcrm.callback(fromwhere, opt, dataset, control, ...)
-  # if it's a full iteration (not just some intermediate informational stuff), print the distribution
+  # print the distribution
   if(fromwhere == 'full') print(round(mphdist(opt$par),6))
 }
 }
