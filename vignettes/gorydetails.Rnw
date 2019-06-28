@@ -1,0 +1,94 @@
+ \documentclass{amsart}
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Some gory details in durmod}
+
+\usepackage[utf8]{inputenc}
+
+\newcommand{\strong}[1]{{\normalfont\fontseries{b}\selectfont #1}}
+\let\pkg=\strong
+\newcommand\code{\bgroup\@codex}
+\def\@codex#1{{\normalfont\ttfamily\hyphenchar\font=-1 #1}\egroup}
+
+\newcommand{\bma}{\begin{bmatrix}}
+\newcommand{\ema}{\end{bmatrix}}
+
+
+
+\title{Some gory details in \pkg{durmod}}
+
+\author{Simen Gaure}
+\address{Ragnar Frisch Centre for Economic Research, Oslo, Norway}
+\date{June 28, 2019}
+
+\begin{document}
+\begin{abstract}
+This is a deeper look into the datastructures in \pkg{durmod}. 
+\end{abstract}
+\maketitle
+Let's have a look at the already fitted demonstration dataset from 
+\code{vignette("whatmph")}.
+<<>>=
+library(durmod)
+data(durdata)
+best <- fit[[1]]
+summary(best)
+@ 
+There is a warning about NaNs, i.e. ``Not a Number'', but
+there are no NaNs in the output.
+Here is the reason.
+Internally, \pkg{durmod} stores coefficients in a structured list, we can e.g.
+have a look at the coefficients for transition to ``job'', or the mixed log hazards.
+<<>>=
+best$par$parset$job$pars
+best$par$parset$job$mu
+@ 
+The \(n\) probabilites for the hazard distribution are parametrized
+with a logit transformation: \(p_{i} = \exp(a_{i-1})/\sum_{j=0}^n \exp(a_j)\),
+where \(a_0 = 0\), and the \(a_j\)s are estimated. These \(a_j\)s can be
+inspected with
+<<>>=
+best$par$pargs
+@ 
+and converted to probabilities with,
+<<>>=
+a2p(best$par$pargs)
+@ 
+The entire vector of estimated parameters can be flattened into a vector
+and outfitted with standard errors, they can be computed by inverting the Fisher matrix:
+<<>>=
+cbind(value=flatten(best$par), se=sqrt(diag(geninv(best$fisher,0))))
+@ 
+And there we got a message about NaNs, and we can even see them.
+It turns out that the standard error for some of the log hazards
+can't be computed, and the generalized inverse function replaces them with NaNs.
+
+We can see more. Some of the \code{mu}s, the log proportional hazard parameters, are 
+exceedingly negative, this correpsonds to hazards which should be zero, so the log
+hazards should really be \(-\infty\), but \(\exp(-\infty)\)  is numerically difficult to distinguish
+from \(\exp(-27)\) so we couldn't optimize all the way down, 
+hence the NaN in the standard error. Some other very negative \code{mu}s have
+exceedingly large standard errors, there is a long way down to \(-\infty\). This numerical
+problem also influences the probability parameters, the \code{pargs...}.
+
+In short, formally, the mixture distribution is imprecisely estimated. However, the
+maximization does not use the Hessian or Fisher matrix. This formal problem could
+ostensibly have been avoided by estimating \(\exp(\mu)\) instead of \(\mu\), and not parametrizing
+the probabilities, but that would require us to maximize with non-negativity constraints
+on the proportional hazards and probabilities, and an equality constraint on the sum of
+the probabilities. Constrained maximization also has some issues. 
+The constraints would certainly be binding in some cases, and the standard
+error would still be dubious.
+
+There is no obvious way to avoid this kind of problems. The simple reason is
+that the method requires us to add new mixture points until we no
+longer can improve the likelihood. That is, the final point we add
+will not improve the likelihood, or improve it very little. That is,
+almost by definition, a recipe for getting a degenerate
+Hessian/Fisher-matrix, which means that one or
+more of the standard errors will suffer.  Fortunately it is the 
+proportional hazard distribution which causes problems, which in most applications is a set
+of nuisance parameters for which the standard errors are of minor importance.
+
+
+\end{document}
+

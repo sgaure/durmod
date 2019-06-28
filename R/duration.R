@@ -195,7 +195,7 @@ mphcrm <- function(formula,data,risksets=NULL,
   if(!is.null(control$cluster)) {prepcluster(dataset,control); on.exit(cleancluster(control$cluster))}
 
   z <- pointiter(dataset,pset,control)
-
+  
   structure(z,call=match.call())
 }
 
@@ -427,9 +427,23 @@ optdist <- function(dataset,pset,control) {
     }
     -mphloglik(dataset,pset,control=control)
   }
+  gdfun <- function(a) {
+    n <- length(pset$pargs)+1
+    pset$pargs[] <- a[seq_len(n-1)]
+    pos <- n
+    usepos <- seq_len(n-1)
+    for(i in seq_along(pset$parset)) {
+      pset$parset[[i]]$mu[] <- a[pos:(pos+n-1)]
+      usepos <- c(usepos,pos:(pos+n-1))
+      pos <- pos+n
+    }
+    -attr(mphloglik(dataset,pset,dogradient=TRUE, control=control),'gradient')[usepos]
+  }
+
+
   args <- c(pset$pargs,sapply(pset$parset, function(pp) pp$mu))
 #  message('optimize dist')
-  dopt <- optim(args,dfun,method='BFGS',control=list(trace=0,REPORT=100))
+  dopt <- optim(args,dfun,gdfun,method='BFGS',control=list(trace=0,REPORT=100))
   n <- length(pset$pargs)
 #  message('new probs',sprintf(' %.7f',a2p(dopt$par[1:n])), ' value: ',dopt$value)
   pset$pargs[] <- dopt$par[seq_len(n)]

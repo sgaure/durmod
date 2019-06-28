@@ -154,7 +154,7 @@ exclude <- function(x,exclude,...) {
 
 #' @method logLik mphcrm.opt
 #' @param useobs Use number of observations for computing degrees of freedom, not number of spells.
-#' @export
+##' @export
 logLik.mphcrm.opt <- function(object, ..., useobs=FALSE) {
   val <- object$value
   attr(val, 'nall') <- object$nobs

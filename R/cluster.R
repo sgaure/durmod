@@ -15,7 +15,7 @@ prepcluster <- function(dset,control) {
   ends <- sapply(cumeach, function(i) tail(which(spellidx < i),1))
   starts <- 1L+c(0L,ends[-K])
   spe <- c(spellidx,N+1)
-  csplit <- mapply(function(s,e) spellidx[s]:(spe[e+1]-1), starts,ends)
+  csplit <- mapply(function(s,e) spellidx[s]:(spe[e+1]-1), starts,ends,SIMPLIFY=TRUE)
 
   # csplit is a list. One element for each node.
   # Each element is a vector of observations which
