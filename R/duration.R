@@ -276,7 +276,14 @@ mphcrm.control <- function(...) {
 #' Beware that
 #' \code{control} contains a reference to the callback function, which may contain a reference
 #' to the top-level environment, which may contain the full dataset. So if you save \code{control}
-#' you may end up saving the entire dataset.
+#' to file, you may end up saving the entire dataset.
+#' @examples
+#' callback <- function(fromwhere, opt, dataset, control, ...) {
+#'   # call the standard callback to print a diagnostic line
+#'   mphcrm.callback(fromwhere, opt, dataset, control, ...)
+#'   # if it's a full iteration (not just some intermediate informational stuff), print the distribution
+#'   if(fromwhere == 'full') print(round(mphdist(opt$par),6))
+#' }
 #' @export
 mphcrm.callback <- local({
   lastfull <- Sys.time()

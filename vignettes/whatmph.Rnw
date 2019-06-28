@@ -247,7 +247,8 @@ internally \code{mphcrm} does not create a large model matrix filled with dummy 
 that factors with many levels is quite fast to estimate.
 
 \section{Control parameters}
-There are many control parameters. Here are some you may want to tinker with.
+There are many control parameters. Rather than scattering more or less arbitrary constants 
+around the program, I have collected them here. Some of them you may want to tinker with.
 \begin{itemize}
 \item{\code{threads.}} An integer. The number of parallel threads used
   by \code{mphcrm}. The default is taken from
@@ -268,7 +269,7 @@ There are many control parameters. Here are some you may want to tinker with.
   in \code{mphcrm} shares a cpu with your mail program trying to sort your inbox, the speed may be
   halved.
 
-  For creation of the Fisher matrix, \code{mphcrm} calls into BLAS from a single thread. For
+  For creation of the Fisher matrix, \code{mphcrm} calls into the BLAS from a single thread. For
   large datasets with many coefficients to estimate, there can be some benefit from linking R
   with a highly optimized and parallel BLAS, like mkl from Intel. See the R documentation for how
   to do this.
@@ -291,6 +292,8 @@ There are many control parameters. Here are some you may want to tinker with.
   hazard distribution turns out to be equal. One of them can then be removed. \code{eqtol} is the
   threshold below which the \(\ell^\infty\) distance between two location points is so small that the
   two points are thought to be equal. The default is 0.0001.
+\item{\code{maxtime.}} A numeric. When searching for a new location point, a global search algorithm 
+  from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds. The default is 60.
 \item{\code{callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
   it is possible to write your own. It will replace the default callback (which you can call from your function).
   In this way you can e.g. get diagnostics on particular coefficients, save intermediate results
