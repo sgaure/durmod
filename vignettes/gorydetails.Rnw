@@ -53,7 +53,7 @@ and converted to probabilities with,
 <<>>=
 a2p(best$par$pargs)
 @ 
-The entire vector of estimated parameters can be flattened into a vector
+The entire set of estimated parameters can be flattened into a vector
 and outfitted with standard errors, they can be computed by inverting the Fisher matrix:
 <<>>=
 cbind(value=flatten(best$par), se=sqrt(diag(geninv(best$fisher,0))))
