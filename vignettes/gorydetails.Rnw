@@ -63,7 +63,7 @@ It turns out that the standard error for some of the log hazards
 can't be computed, and the generalized inverse function replaces them with NaNs.
 
 We can see more. Some of the \code{mu}s, the log proportional hazard parameters, are 
-exceedingly negative, this correpsonds to hazards which should be zero, so the log
+exceedingly negative, this corresponds to hazards which should be zero, so the log
 hazards should really be \(-\infty\), but \(\exp(-\infty)\)  is numerically difficult to distinguish
 from \(\exp(-27)\) so we couldn't optimize all the way down, 
 hence the NaN in the standard error. Some other very negative \code{mu}s have
