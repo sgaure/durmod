@@ -274,7 +274,7 @@ around the program, I have collected them here with their defaults. Some of them
   large datasets with many coefficients to estimate, there can be some benefit from linking R
   with a highly optimized and parallel BLAS, like mkl from Intel. See the R documentation for how
   to do this.
-\item{\code{iters=15}.} An integer. The number of iterations to perform. The estimation may stop earlier, if
+\item{\code{iters=25}.} An integer. The number of iterations to perform. The estimation may stop earlier, if
   neither the log likelihood \emph{nor} the entropy improves. 
 \item{\code{ll.improve=0.001}.} A numeric. The amount the log-likelihood must increase with to be considered an
   improvement. 

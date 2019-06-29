@@ -37,7 +37,7 @@ Modify the default estimation parameters for
   \code{\link{mphcrm}}
 }
 \note{
-There are other parameters too, I may document them later. Instead of cluttering
+There are more parameters documented in a vignette. Instead of cluttering
 the source code with constants and stuff required by various optimization routines, they
-have been put in this control list. You should perhaps not change them.
+have been put in this control list.
 }
