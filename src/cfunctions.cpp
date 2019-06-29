@@ -401,9 +401,12 @@ NumericVector cloglik(List dataset, List pset, List control,
   const int nrisks = risklist.size();
   IntegerVector state = as<IntegerVector>(dataset["state"]);
 
-  bool *riskmasks = (bool*) R_alloc(nrisks*transitions, sizeof(bool)); 
-  memset(riskmasks,0,nrisks*transitions*sizeof(bool));
-
+  bool *riskmasks = 0;
+  if(nrisks > 0) {
+    riskmasks = (bool*) R_alloc(nrisks*transitions, sizeof(bool)); 
+    memset(riskmasks,0,nrisks*transitions*sizeof(bool));
+  }
+  
   for(int i = 0; i < nrisks; i++) {
     IntegerVector v = as<IntegerVector>(risklist[i]);
     for(int t = 0; t < v.size(); t++) {
