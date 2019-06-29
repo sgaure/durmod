@@ -344,10 +344,10 @@ pointiter <- function(dataset,pset,control) {
   opt0$nspells <- dataset$nspells
   class(opt0) <- 'mphcrm.opt'
 
-  control$callback('nullmodel',rescale(opt0),dataset,control)
   intr <- FALSE
   prevopt <- opt0
   iopt <- opt <- list(nullmodel=rescale(opt0))
+  control$callback('nullmodel',opt[['nullmodel']],dataset,control)
   tryCatch(
     {
       i <- 0; done <- FALSE
