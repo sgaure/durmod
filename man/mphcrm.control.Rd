@@ -7,7 +7,8 @@
 mphcrm.control(...)
 }
 \arguments{
-\item{...}{parameters to change \itemize{
+\item{...}{parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
+\itemize{
 \item threads integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
 \item iters integer. How many iterations should we maximally run. Defaults to 12.
 \item ll.improve numeric. How much must the be log-likelihood improve from the last iteration before
@@ -25,8 +26,6 @@ mphcrm.control(...)
   information on the argument.
 \item trap.interrupt logical. Should interrupts be trapped so that \code{mphcrm} returns gracefully?
 In this case the program will continue. Defaults to \code{interactive()}.
-\item method character. The method used for optimization. Currently 'BFGS' is supported, but it
-might work with 'L-BFGS-B' also, if memory is constrained.
 }}
 }
 \value{

@@ -301,19 +301,19 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{jobname="mphcrm"}.} A character string. The initial portion of the one-line diagnostic. Useful if you
   e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
   you can see the progress. 
-\item{\code{method="BFGS"}.} A character string. Either \code{"BFGS"}, or \code{"L-BFGS-B"}. The latter
-  saves some memory, if that is a problem with estimations with a very large number of coefficients.
 \item{\code{trap.interrupt=interactive().}} A logical. If you decide to interrupt an interactive estimation before
   it has terminated, either because you don't want to wait, or because it seems to have run astray,
   the default behaviour for \code{mphcrm} is to catch the interrupt, and return gracefully with the
   result of the estimation so far. This behaviour can be switched off with \code{trap.interrupt=FALSE}.
-\item{\code{abstol=1e-4}.} A numeric. The absolute tolerance given to \code{stats::optim} when maximizing
-  the log likelihood. 
-\item{\code{reltol=1e-14}.} A numeric. The relative tolerance given to \code{stats::optim} when maximizing
-  the log likelihood.
-\item{\code{mphrange=c(-10,2)}.} A numeric vector of length 2. The range where new location
-  points for the mixed proportional hazard distribution are sought. The estimation may end up
-  with points outside this range, this is only the initial interval.
+\item{\code{tol=0.0001}.} A numeric. The (absolute) tolerance for the log-likelihood maximization.
+\item{\code{itfac=20}.} An integer. The maximum number of iterations in the BFGS-method is \code{itfac*K}, where
+  \code{K} is the number of parameters to estimate.
+\item{\code{method="BFGS"}.} A character string. The default is the
+  most robust method, otherwise one may try one of the local gradient based NLOPT-methods:
+  \code{"TNEWTON", "TNEWTON\_PRECOND", "TNEWTON\_RESTART", "TNEWTON\_PRECOND\_RESTART", "VAR1", "VAR2", "SLSQP"}, or
+  \code{"MMA"}. The Newton-methods can achieve a smaller gradient than BFGS. 
+  For these, it could be a good idea to increase \code{itfac}.
+
 \item{\code{cluster=NULL.}} Cluster specification from package \pkg{parallel} or \pkg{snow}.
   In addition to utilizing all the cores/cpus on a computer, \code{mphcrm} may also
   spread across several computers. It supports running on a cluster 

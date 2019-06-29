@@ -205,7 +205,8 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' Modify the default estimation parameters for
 #'   \code{\link{mphcrm}}
 #' @param ...
-#' parameters to change \itemize{
+#' parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
+#' \itemize{
 #' \item threads integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
 #' \item iters integer. How many iterations should we maximally run. Defaults to 12.
 #' \item ll.improve numeric. How much must the be log-likelihood improve from the last iteration before
@@ -223,8 +224,6 @@ mphcrm <- function(formula,data,risksets=NULL,
 #'   information on the argument.
 #' \item trap.interrupt logical. Should interrupts be trapped so that \code{mphcrm} returns gracefully?
 #' In this case the program will continue. Defaults to \code{interactive()}.
-#' \item method character. The method used for optimization. Currently 'BFGS' is supported, but it
-#' might work with 'L-BFGS-B' also, if memory is constrained.
 #' }
 #' @note
 #' There are other parameters too, I may document them later. Instead of cluttering
@@ -242,6 +241,9 @@ mphcrm.control <- function(...) {
                reltol=1e-14,abstol=1e-4,
                mphrange=c(-10,2),
                tspec='%T', newpoint.maxtime=120,
+               tol=1e-4,
+               method='BFGS',
+               itfac=20L,
                callback=mphcrm.callback,
                cluster=NULL)
   args <- list(...)
@@ -298,8 +300,8 @@ mphcrm.callback <- local({
       cat(jobname,  format(Sys.time(),control$tspec), 'remove probs', sprintf(' %.2e',p[bad]),'\n')
     } else {
       if(is.numeric(opt$convergence) && opt$convergence != 0) {
-      if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) 
-        cat(jobname, format(now,control$tspec), fromwhere, 'convstatus:"',opt$convergence, opt$message,'"\n')
+        if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) 
+          cat(jobname, format(now,control$tspec), fromwhere, 'convstatus:"',opt$convergence, opt$message,'"\n')
       }
     }
 
@@ -342,12 +344,14 @@ pointiter <- function(dataset,pset,control) {
   opt0$mainiter <- 0
   opt0$nobs <- dataset$nobs
   opt0$nspells <- dataset$nspells
+  opt0$entropy <- 0
   class(opt0) <- 'mphcrm.opt'
 
   intr <- FALSE
   prevopt <- opt0
-  iopt <- opt <- list(nullmodel=rescale(opt0))
+  iopt <- opt <- list(nullmodel=rescale(dataset,opt0))
   control$callback('nullmodel',opt[['nullmodel']],dataset,control)
+
   tryCatch(
     {
       i <- 0; done <- FALSE
@@ -400,7 +404,6 @@ pointiter <- function(dataset,pset,control) {
 #
 # 
 rescale <- function(dataset, opt) {
-  message('deb1')
   for(tr in names(dataset$data)) {
     offset <- attr(dataset$data[[tr]],'recode')$offset
     scale <- attr(dataset$data[[tr]],'recode')$scale
@@ -419,7 +422,7 @@ rescale <- function(dataset, opt) {
   if(!is.null(opt$numgrad)) opt$numgrad <- opt$numgrad / scalevec
   if(!is.null(opt$fisher)) opt$fisher <- opt$fisher / scalemat
   if(!is.null(opt$hessian)) opt$hessian <- opt$hessian / scalemat
-  structure(opt,class='mphcrm.opt')
+  opt
 }
 
 optprobs <- function(dataset,pset,control) {
@@ -471,16 +474,26 @@ newpoint <- function(dataset,pset,value,control) {
     }
     -mphloglik(dataset,newset,gdiff=gdiff,control=control)
   }
-  args <- runif(length(newset$parset),control$mphrange[[1]],control$mphrange[[2]])
-  muopt <- nloptr::nloptr(args, fun, lb=rep(control$mphrange[[1]],ntrans), 
-                          ub=rep(control$mphrange[[2]],ntrans),gdiff=gdiff,
+
+  # find ranges for the mus.
+  # stick to the mean +/- 4 sd in each dimension
+  mom <- mphmoments.log(pset)
+  if(length(pset$pargs)+1 >= 4) {
+    low <- mom[,'mean'] - 4*mom[,'sd']
+    high <- mom[,'mean'] + 4*mom[,'sd']
+  } else {
+    low <- mom[,'mean'] - 4
+    high <- mom[,'mean'] + 4
+  }
+  args <- runif(length(low),0,1)*(high-low) + low
+  muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
                                     maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
   if(!gdiff && !(muopt$status %in% c(0,2))) {
-    # that one failed, try gdiff instead
+    # that one failed, try gdiff instead, broader interval
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
-    muopt <- nloptr::nloptr(args, fun, lb=rep(-10,ntrans), ub=rep(1,ntrans),gdiff=TRUE,
+    muopt <- nloptr::nloptr(args, fun, lb=low-4, ub=high+4,gdiff=TRUE,
                             opts=list(algorithm='NLOPT_GN_ISRES',stopval=0,
                                       maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
   }
@@ -566,10 +579,29 @@ hLL <- function(args, skel, dataset, ctrl) {
 
 
 optfull <- function(dataset, pset, control) {
+  if(!identical(control$method,'BFGS')) {
+    method <- control$method
+    if(!length(grep('^NLOPT_',method))) method <- paste('NLOPT_LD_',method,sep='') 
+    args <- flatten(pset)
+    lb <- rep(-Inf,length(args))
+    ub <- rep(Inf,length(args))
+    nlopt <- nloptr::nloptr(args, LL, gLL, lb=lb, ub=ub, 
+                            skel=attr(args,'skeleton'), ctrl=control, dataset=dataset,
+                            opts=list(algorithm=method,
+                                      maxeval=control$itfac*length(args), ftol_abs=control$tol, xtol_rel=0))
+    nlopt$par <- unflatten(nlopt$solution,attr(args,'skeleton'))
+    nlopt$value <- nlopt$objective
+    nlopt$convergence <- if(nlopt$status==3) 0 else nlopt$status
+    return(nlopt)
+}
+
   args <- flatten(pset)
+  val <- mphloglik(dataset,pset,dogradient=TRUE,control=control)
+  tol <- 1e-5*control$tol/(control$tol+abs(val))
+  pscale <- pmax(abs(attr(val,'gradient')),1e-9)
   opt <- optim(args,LL,gLL,method=control$method,
-        control=list(trace=0,REPORT=10,maxit=20*length(args),lmm=60,
-                     abstol=control$abstol,reltol=control$reltol),
+        control=list(trace=0,REPORT=10,maxit=control$itfac*length(args),lmm=60,
+                     reltol=tol, parscale=pscale),
         skel=attr(args,'skeleton'), ctrl=control,dataset=dataset)
   opt$par <- unflatten(opt$par)
   opt
