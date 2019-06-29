@@ -280,9 +280,9 @@ around the program, I have collected them here with their defaults. Some of them
   improvement. 
 \item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must increase with
   to be considered an improvement.
-\item{\code{newprob=0.001}.} A numeric. When searching for a new masspoint, new probability is added to
+\item{\code{newprob=0.001}.} A numeric. When searching for a new masspoint, a new support point is added to
   the distribution with a small probability, then a search is done for a location for this probability 
-  which increases the likelihood. \code{newprob} is this small probability. The default is 0.001.
+  which increases the likelihood. \code{newprob} is this small probability. 
   If the search fails, the new probability is set to zero, and a search for a positive directional
   derivative of the likelihood (in the direction of positive probability) is done.  The reason
   we don't search for the derivative directly is that it tends to find unfavourable points, typically
@@ -301,7 +301,7 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{jobname="mphcrm"}.} A character string. The initial portion of the one-line diagnostic. Useful if you
   e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
   you can see the progress. 
-\item{\code{method="BFGS"}.} A character string. Either \code{"BFGS"} (the default), or \code{"L-BFGS-B"}. The latter
+\item{\code{method="BFGS"}.} A character string. Either \code{"BFGS"}, or \code{"L-BFGS-B"}. The latter
   saves some memory, if that is a problem with estimations with a very large number of coefficients.
 \item{\code{trap.interrupt=interactive().}} A logical. If you decide to interrupt an interactive estimation before
   it has terminated, either because you don't want to wait, or because it seems to have run astray,
@@ -313,7 +313,7 @@ around the program, I have collected them here with their defaults. Some of them
   the log likelihood.
 \item{\code{mphrange=c(-10,2)}.} A numeric vector of length 2. The range where new location
   points for the mixed proportional hazard distribution are sought. The estimation may end up
-  with points outside this range, but this is the initial interval.
+  with points outside this range, this is only the initial interval.
 \item{\code{cluster=NULL.}} Cluster specification from package \pkg{parallel} or \pkg{snow}.
   In addition to utilizing all the cores/cpus on a computer, \code{mphcrm} may also
   spread across several computers. It supports running on a cluster 
