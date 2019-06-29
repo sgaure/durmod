@@ -310,7 +310,7 @@ around the program, I have collected them here with their defaults. Some of them
   \code{K} is the number of parameters to estimate.
 \item{\code{method="BFGS"}.} A character string. The default is the
   most robust method, otherwise one may try one of the local gradient based NLOPT-methods:
-  \code{"TNEWTON", "TNEWTON\_PRECOND", "TNEWTON\_RESTART", "TNEWTON\_PRECOND\_RESTART", "VAR1", "VAR2", "SLSQP"}, or
+  \code{"TNEWTON\_PRECOND", "TNEWTON", "TNEWTON\_RESTART", "TNEWTON\_PRECOND\_RESTART", "VAR1", "VAR2", "SLSQP"}, or
   \code{"MMA"}. The Newton-methods can achieve a smaller gradient than BFGS. 
   For these, it could be a good idea to increase \code{itfac}.
 

@@ -226,9 +226,9 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' In this case the program will continue. Defaults to \code{interactive()}.
 #' }
 #' @note
-#' There are other parameters too, I may document them later. Instead of cluttering
+#' There are more parameters documented in a vignette. Instead of cluttering
 #' the source code with constants and stuff required by various optimization routines, they
-#' have been put in this control list. You should perhaps not change them.
+#' have been put in this control list. 
 #' @return
 #' list of control parameters suitable for the \code{control}
 #'   argument of \code{\link{mphcrm}}
@@ -238,8 +238,6 @@ mphcrm.control <- function(...) {
                method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=1e-3, jobname='mphcrm', 
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
-               reltol=1e-14,abstol=1e-4,
-               mphrange=c(-10,2),
                tspec='%T', newpoint.maxtime=120,
                tol=1e-4,
                method='BFGS',
@@ -247,9 +245,11 @@ mphcrm.control <- function(...) {
                callback=mphcrm.callback,
                cluster=NULL)
   args <- list(...)
-  bad <- !(names(args) %in% names(ctrl))
-  if(any(bad)) {message("unknown control parameter(s): ", paste(names(args)[bad], collapse=' '))}
-  ctrl[names(args)] <- args
+  fullargs <- names(ctrl)[pmatch(names(args), names(ctrl))]
+  bad <- names(args)[is.na(fullargs)]
+  fullargs[is.na(fullargs)] <- bad
+  if(length(bad)) {message("unknown control parameter(s): ", bad, collapse=' ')}
+  ctrl[fullargs] <- args
   ctrl
 }
 
