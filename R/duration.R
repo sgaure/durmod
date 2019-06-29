@@ -284,7 +284,7 @@ mphcrm.control <- function(...) {
 #'   # call the standard callback to print a diagnostic line
 #'   mphcrm.callback(fromwhere, opt, dataset, control, ...)
 #'   # print the distribution
-#'   if(fromwhere == 'full') print(round(mphdist(opt$par),6))
+#'   if(fromwhere == 'full') print(round(mphdist(opt),6))
 #' }
 #' @export
 mphcrm.callback <- local({
@@ -344,10 +344,10 @@ pointiter <- function(dataset,pset,control) {
   opt0$nspells <- dataset$nspells
   class(opt0) <- 'mphcrm.opt'
 
-  control$callback('nullmodel',opt0,dataset,control)
+  control$callback('nullmodel',rescale(opt0),dataset,control)
   intr <- FALSE
   prevopt <- opt0
-  iopt <- opt <- list(nullmodel=opt0)
+  iopt <- opt <- list(nullmodel=rescale(opt0))
   tryCatch(
     {
       i <- 0; done <- FALSE

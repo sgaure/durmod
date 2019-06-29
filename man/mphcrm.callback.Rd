@@ -40,6 +40,6 @@ callback <- function(fromwhere, opt, dataset, control, ...) {
   # call the standard callback to print a diagnostic line
   mphcrm.callback(fromwhere, opt, dataset, control, ...)
   # print the distribution
-  if(fromwhere == 'full') print(round(mphdist(opt$par),6))
+  if(fromwhere == 'full') print(round(mphdist(opt),6))
 }
 }
