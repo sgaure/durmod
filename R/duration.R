@@ -346,6 +346,7 @@ pointiter <- function(dataset,pset,control) {
 
   control$callback('nullmodel',opt0,dataset,control)
   intr <- FALSE
+  prevopt <- opt0
   iopt <- opt <- list(nullmodel=opt0)
   tryCatch(
     {
@@ -353,14 +354,19 @@ pointiter <- function(dataset,pset,control) {
       while(!done) {
         i <- i+1
         control$mainiter <- i
-        opt <- c(list(ml(dataset,pset,control)), opt)
-        opt[[1]]$mainiter <- i
-        names(opt)[1] <- sprintf('iter%d',i)
-        control$callback('full',opt[[1]], dataset,control)
-        ll.improve <- opt[[1]]$value - opt[[2]]$value
-        e.improve <- abs(opt[[1]]$entropy - opt[[2]]$entropy)
-        done <- (ll.improve < control$ll.improve && e.improve < control$e.improve)|| i >= control$iters
-        if(!done) pset <- addpoint(dataset,opt[[1]]$par,opt[[1]]$value,control)
+        newopt <- ml(dataset,pset,control)
+        newopt$mainiter <- i
+        unscaleopt <- rescale(dataset,newopt)
+        # insert into list
+        opt <- c(list(unscaleopt), opt)
+        names(opt)[1L] <- sprintf('iter%d',i)
+        control$callback('full',unscaleopt, dataset,control)
+        # check termination
+        ll.improve <- newopt$value - prevopt$value
+        e.improve <- abs(newopt$entropy - prevopt$entropy)
+        done <- (ll.improve < control$ll.improve && e.improve < control$e.improve) || i >= control$iters
+        prevopt <- newopt
+        if(!done) pset <- addpoint(dataset,newopt$par,newopt$value,control)
       }
     },
     error=function(e) {
@@ -387,29 +393,33 @@ pointiter <- function(dataset,pset,control) {
     }
   }
 
-# rescale the parameters
-  scales <- unlist(lapply(dataset$data, function(dd) attr(dd,'recode')[[2]]))
-  opt <- lapply(opt, function(op) {
-    nm <- names(op$gradient)
-    scalevec <- rep(1,length(nm))
-    names(scalevec) <- nm
-    scalevec[names(scales)] <- scales
-    scalemat <- scalevec * rep(scalevec,each=length(scalevec))
-    if(!is.null(op$gradient)) op$gradient <- op$gradient / scalevec
-    if(!is.null(op$numgrad)) op$numgrad <- op$numgrad / scalevec
-    if(!is.null(op$fisher)) op$fisher <- op$fisher / scalemat
-    if(!is.null(op$hessian)) op$hessian <- op$hessian / scalemat
-    for(tr in names(dataset$data)) {
-      offset <- attr(dataset$data[[tr]],'recode')$offset
-      scale <- attr(dataset$data[[tr]],'recode')$scale
-      op$par$parset[[tr]]$pars[] <- op$par$parset[[tr]]$pars*scale
-      muadj <- sum(op$par$parset[[tr]]$pars*offset)
-      op$par$parset[[tr]]$mu <- op$par$parset[[tr]]$mu - muadj
-    }
-    op
-  })
-
   structure(opt,class='mphcrm.list')
+}
+
+# Rescale parameters
+#
+# 
+rescale <- function(dataset, opt) {
+  message('deb1')
+  for(tr in names(dataset$data)) {
+    offset <- attr(dataset$data[[tr]],'recode')$offset
+    scale <- attr(dataset$data[[tr]],'recode')$scale
+    opt$par$parset[[tr]]$pars[] <- opt$par$parset[[tr]]$pars*scale
+    muadj <- sum(opt$par$parset[[tr]]$pars*offset)
+    opt$par$parset[[tr]]$mu <- opt$par$parset[[tr]]$mu - muadj
+  }
+  if(is.null(opt$gradient)) return(opt)
+  scales <- unlist(lapply(dataset$data, function(dd) attr(dd,'recode')[[2]]))
+  nm <- names(opt$gradient)
+  scalevec <- rep(1,length(nm))
+  names(scalevec) <- nm
+  scalevec[names(scales)] <- scales
+  scalemat <- scalevec * rep(scalevec,each=length(scalevec))
+  opt$gradient <- opt$gradient / scalevec
+  if(!is.null(opt$numgrad)) opt$numgrad <- opt$numgrad / scalevec
+  if(!is.null(opt$fisher)) opt$fisher <- opt$fisher / scalemat
+  if(!is.null(opt$hessian)) opt$hessian <- opt$hessian / scalemat
+  structure(opt,class='mphcrm.opt')
 }
 
 optprobs <- function(dataset,pset,control) {
@@ -461,8 +471,9 @@ newpoint <- function(dataset,pset,value,control) {
     }
     -mphloglik(dataset,newset,gdiff=gdiff,control=control)
   }
-  args <- runif(length(newset$parset),control$mphrange[1],control$mphrange[2])
-  muopt <- nloptr::nloptr(args, fun, lb=rep(-10,ntrans), ub=rep(1,ntrans),gdiff=gdiff,
+  args <- runif(length(newset$parset),control$mphrange[[1]],control$mphrange[[2]])
+  muopt <- nloptr::nloptr(args, fun, lb=rep(control$mphrange[[1]],ntrans), 
+                          ub=rep(control$mphrange[[2]],ntrans),gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
                                     maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
   if(!gdiff && !(muopt$status %in% c(0,2))) {
