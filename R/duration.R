@@ -239,6 +239,8 @@ mphcrm.control <- function(...) {
                method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=1e-3, jobname='mphcrm', 
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
+               reltol=1e-14,abstol=1e-4,
+               mphrange=c(-10,2),
                tspec='%T', newpoint.maxtime=120,
                callback=mphcrm.callback,
                cluster=NULL)
@@ -459,7 +461,7 @@ newpoint <- function(dataset,pset,value,control) {
     }
     -mphloglik(dataset,newset,gdiff=gdiff,control=control)
   }
-  args <- runif(length(newset$parset),-10,1)
+  args <- runif(length(newset$parset),control$mphrange[1],control$mphrange[2])
   muopt <- nloptr::nloptr(args, fun, lb=rep(-10,ntrans), ub=rep(1,ntrans),gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
                                     maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
@@ -556,7 +558,7 @@ optfull <- function(dataset, pset, control) {
   args <- flatten(pset)
   opt <- optim(args,LL,gLL,method=control$method,
         control=list(trace=0,REPORT=10,maxit=20*length(args),lmm=60,
-                     abstol=1e-4,reltol=1e-14),
+                     abstol=control$abstol,reltol=control$reltol),
         skel=attr(args,'skeleton'), ctrl=control,dataset=dataset)
   opt$par <- unflatten(opt$par)
   opt
