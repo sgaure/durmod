@@ -207,11 +207,11 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' @param ...
 #' parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
 #' \itemize{
-#' \item threads integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
-#' \item iters integer. How many iterations should we maximally run. Defaults to 12.
-#' \item ll.improve numeric. How much must the be log-likelihood improve from the last iteration before
+#' \item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
+#' \item iters. integer. How many iterations should we maximally run. Defaults to 12.
+#' \item ll.improve. numeric. How much must the be log-likelihood improve from the last iteration before
 #'   termination. Defaults to 0.001
-#' \item newpoint.maxtime numeric. For how many seconds should a global search for a new point
+#' \item newpoint.maxtime. numeric. For how many seconds should a global search for a new point
 #'   improving the likelihood be conducted before we continue with the best we have found. Defaults to
 #'   120.
 #' \item callback. A
@@ -222,8 +222,9 @@ mphcrm <- function(formula,data,risksets=NULL,
 #'   \code{mphcrm()} will return with the most recently estimated set
 #'   of parameters. See the help on \code{\link{mphcrm.callback}} for
 #'   information on the argument.
-#' \item trap.interrupt logical. Should interrupts be trapped so that \code{mphcrm} returns gracefully?
+#' \item trap.interrupt. logical. Should interrupts be trapped so that \code{mphcrm} returns gracefully?
 #' In this case the program will continue. Defaults to \code{interactive()}.
+#' \item cluster. Cluster specification from package \pkg{parallel} or \pkg{snow}.
 #' }
 #' @note
 #' There are more parameters documented in a vignette. Instead of cluttering
@@ -231,7 +232,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' have been put in this control list. 
 #' @return
 #' list of control parameters suitable for the \code{control}
-#'   argument of \code{\link{mphcrm}}
+#'   argument of \code{\link{mphcrm}}.
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=25,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
@@ -286,8 +287,11 @@ mphcrm.control <- function(...) {
 #' callback <- function(fromwhere, opt, dataset, control, ...) {
 #'   # call the standard callback to print a diagnostic line
 #'   mphcrm.callback(fromwhere, opt, dataset, control, ...)
-#'   # print the distribution
-#'   if(fromwhere == 'full') print(round(mphdist(opt),6))
+#'   # print the distribution and two coefficients
+#'   if(fromwhere == 'full') {
+#'     print(round(mphdist(opt),6))
+#'     print(summary(opt)$coefs[c('job.alpha','job.x1'),])
+#'   }
 #' }
 #' @export
 mphcrm.callback <- local({
