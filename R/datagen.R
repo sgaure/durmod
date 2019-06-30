@@ -84,8 +84,8 @@ datagen <- function(N,censor=80) {
     vv <- mvtnorm::rmvnorm(.N, mean=means, sigma=cov2)
     list(vv[,1],vv[,2])
   }]
-#  print(persons[,.(expjob=mean(exp(ve)), expprog=mean(exp(vp)))])
-#  print(persons[,cov(cbind(ve=exp(ve),vp=exp(vp)))])
+  means <- persons[,colMeans(cbind(job=exp(ve),program=exp(vp)))]
+  cv <- persons[,cov(cbind(job=exp(ve),program=exp(vp)))]
   # create spells
   spells <- persons[,{
     genspell(x1,x2,ve,vp,censor)
@@ -94,5 +94,5 @@ datagen <- function(N,censor=80) {
   levels(spells$d) <- c('none','job','program')
   spells$state <- factor(spells$alpha+1,levels=1:2)
   levels(spells$state) <- c('unemp', 'onprogram')
-  spells
+  structure(spells, means=means, cov=cv)
 }

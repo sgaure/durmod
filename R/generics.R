@@ -65,7 +65,7 @@ summary.mphcrm.pset <- function(object,...) {
   val <- flatten(object)
   dist <- grep('(\\.mu[0-9]+|pargs[0-9]*)$',names(val))
   list(value = val[-dist], 
-       moments=mphdist(object))
+       mphdist=mphdist(object))
 }
 
 #' @method print mphcrm.pset

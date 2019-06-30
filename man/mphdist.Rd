@@ -4,8 +4,8 @@
 \alias{mphdist}
 \alias{mphdist.log}
 \alias{mphmoments}
-\alias{mphcov}
 \alias{mphmoments.log}
+\alias{mphcov}
 \alias{mphcov.log}
 \title{Extract the mixed proportional hazard distribution}
 \usage{
@@ -15,9 +15,9 @@ mphdist.log(pset)
 
 mphmoments(pset)
 
-mphcov(pset)
-
 mphmoments.log(pset)
+
+mphcov(pset)
 
 mphcov.log(pset)
 }
@@ -39,9 +39,9 @@ Various functions for extracting the proportional hazard distribution.
 
 \code{mphmoments} returns the first and second moments of the hazard distribution.
 
-\code{mphcov} returns the variance/covariance matrix of the hazard distribution.
-
 \code{mphmoments.log} returns the first and second moments of the log hazard distribution.
+
+\code{mphcov} returns the variance/covariance matrix of the hazard distribution.
 
 \code{mphcov.log} returns the variance/covariance matrix of the log hazard distribution.
 }

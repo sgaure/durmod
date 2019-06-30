@@ -93,7 +93,25 @@ mphdist.log <- function(pset) {
 mphmoments <- function(pset) {
   dist <- mphdist(pset)
   mean <- colSums(dist[,1]*dist[,-1,drop=FALSE])
-  variance <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2)))
+  if(length(mean) == 1) 
+    variance <- sum(dist[,1]*(dist[,-1]-mean)^2) 
+  else 
+    variance <- rowSums(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2))
+  sd <- sqrt(variance)
+  cbind(mean,variance,sd)
+}
+#' Extract moments of the mixed proportional log hazard distribution
+#' @rdname mphdist
+#' @description
+#' \code{mphmoments.log} returns the first and second moments of the log hazard distribution.
+#' @export
+mphmoments.log <- function(pset) {
+  dist <- mphdist.log(pset)
+  mean <- colSums(dist[,1]*dist[,-1,drop=FALSE])
+  if(length(mean) == 1) 
+    variance <- sum(dist[,1]*(dist[,-1]-mean)^2) 
+  else
+    variance <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2)))
   sd <- sqrt(variance)
   cbind(mean,variance,sd)
 }
@@ -110,18 +128,6 @@ mphcov <- function(pset) {
 }
 
 
-#' Extract moments of the mixed proportional log hazard distribution
-#' @rdname mphdist
-#' @description
-#' \code{mphmoments.log} returns the first and second moments of the log hazard distribution.
-#' @export
-mphmoments.log <- function(pset) {
-  dist <- mphdist.log(pset)
-  mean <- colSums(dist[,1]*dist[,-1,drop=FALSE])
-  variance <- rowSums(as.matrix(apply(dist, 1, function(x) x[1]*(x[-1]-mean)^2)))
-  sd <- sqrt(variance)
-  cbind(mean,variance,sd)
-}
 
 #' Extract covariance matrix of the proportional hazard distribution
 #' @rdname mphdist

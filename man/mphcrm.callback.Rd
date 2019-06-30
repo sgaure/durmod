@@ -27,7 +27,9 @@ completed.
 \details{
 If you write your own callback function it will replace the default function, but you can
 of course call the default callback from your own callback function, and in addition print your
-own diagnostics, or save the intermediate \code{opt} in a file, or whatever.
+own diagnostics, or save the intermediate \code{opt} in a file, or whatever. You can even
+stop the estimation by doing a \code{stop('<some message>')}, and \code{mphcrm} will return
+with the estimates done so far, provided the control parameter \code{trap.interrupt=TRUE}.
 }
 \note{
 Beware that
@@ -39,7 +41,10 @@ to file, you may end up saving the entire dataset.
 callback <- function(fromwhere, opt, dataset, control, ...) {
   # call the standard callback to print a diagnostic line
   mphcrm.callback(fromwhere, opt, dataset, control, ...)
-  # print the distribution
-  if(fromwhere == 'full') print(round(mphdist(opt),6))
+  # print the distribution and two coefficients
+  if(fromwhere == 'full') {
+    print(round(mphdist(opt),6))
+    print(summary(opt)$coefs[c('job.alpha','job.x1'),])
+  }
 }
 }

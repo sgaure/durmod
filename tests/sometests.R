@@ -16,10 +16,10 @@ mphdist(best)
 mphcov(best)
 
 # Then make a state factor
-state <- dataset[,factor(alpha+1,levels=1:2)]
-levels(state) <- c('unemp','onprogram')
-dataset$state <- state
-names(risksets) <- levels(state)
+dataset$state <- dataset[,factor(alpha+1,labels=c('unemp','onprogram'))]
+names(risksets) <- levels(dataset$state)
+# reset seed, the previous mphcrm may have slightly different behaviour on different architectures.
+set.seed(42)
 dataset[, f := factor(sample(1:6,.N,replace=TRUE))]
 dataset[, g := factor(sample(1:4,.N,replace=TRUE))]
 opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(state)+ID(id), data=dataset, 
@@ -30,5 +30,7 @@ summary(opt[[1]])
 # single risk
 dataset <- dataset[state=='onprogram']
 opt <- mphcrm(d ~ x1+x2+D(duration)+ID(id), data=dataset, 
-              control=mphcrm.control(threads=1,iters=1,callback=NULL))
+              control=mphcrm.control(threads=1,iters=3,callback=NULL))
 summary(opt[[1]]$par)
+mphmoments(opt[[1]])
+mphcov(opt[[1]])

@@ -1,11 +1,11 @@
-\documentclass{amsart}
+\documentclass[a4paper]{article}
 %\VignetteEngine{knitr::knitr}
 %\VignetteIndexEntry{Overview of durmod}
 %\VignetteKeyword{Mixed proportional hazard}
 %\VignetteKeyword{Competing risk}
 
 \usepackage[utf8]{inputenc}
-
+\usepackage{geometry}
 \newcommand{\strong}[1]{{\normalfont\fontseries{b}\selectfont #1}}
 \let\pkg=\strong
 \newcommand\code{\bgroup\@codex}
@@ -18,16 +18,20 @@
 
 \title{Overview of \pkg{durmod}}
 
-\author{Simen Gaure}
-\address{Ragnar Frisch Centre for Economic Research, Oslo, Norway}
-\date{June 26, 2019}
+\author{Simen Gaure\\
+\small Ragnar Frisch Centre for Economic Research, Oslo, Norway
+}
 
+\date{June 30, 2019}
+\raggedbottom
+\newgeometry{textwidth=15cm, textheight=24cm}
 \begin{document}
+\maketitle
 \begin{abstract}
 This is a walkthrough of an estimation of a generated dataset with the \pkg{durmod} package.
 Also, various tunable parameters and details are provided.
 \end{abstract}
-\maketitle
+
 \section{A dataset}
 The \pkg{durmod} package fits a mixed proportional hazard model with competing risks
 to duration data.  The model is the one from \cite{GRK07}, which was developed
@@ -60,7 +64,7 @@ make a transition to a programme, we're already on it.
 Each row of the dataset has a \code{duration}, this is the time until the transition
 marked in \code{d} occurs.
 
-In our dataset, we we have an observation period of 300, and the individuals enter
+In our dataset, we we have an observation period of 400, and the individuals enter
 the dataset at a random time in this period. When they reach the end of the observation
 period they are no longer observed. That means
 that some individuals do not exit the dataset by doing a transition, but with a \code{d=="none"}.
@@ -214,10 +218,17 @@ The true values used to generate the dataset was
 \code{job.x1=1}, \code{job.x2=-1}, \code{job.alpha=0.2}, \code{program.x1=1}, and
 \code{program.x2=0.5}. 
 The unobserved distribution, the proportional hazards,
-had means: \code{job: 0.135}, \code{program: 0.0826}. Their variances were 0.0273 and 0.0113.
-Their covariance was 0.00656. We see that our estimates are in the vicinity, except
-for the covariances which require more data to get precise.
-
+had means: \code{job: 0.138}, \code{program: 0.0827}. Their variances were 0.0306 and 0.0108.
+Their covariance was 0.00593. Although the first moments should be identified,
+we see that our estimates of the moments are poor, mostly due to a couple of low probability points
+with extremely high proportional hazards. If we go back to 10 points, it is better:
+<<>>=
+summary(fit[['iter10']])
+@ 
+It sometimes happens that such extreme points are found, I haven't quite figured out why,
+but think it is a numerical issue, or a small sample problem. Fortunately, it only
+affects the mixed proportional hazard distribution. If this is of interest, one should
+look out for such extremes.
 
 \section{More options}
 \subsection{Interval timing}
@@ -274,12 +285,16 @@ around the program, I have collected them here with their defaults. Some of them
   large datasets with many coefficients to estimate, there can be some benefit from linking R
   with a highly optimized and parallel BLAS, like mkl from Intel. See the R documentation for how
   to do this.
+
 \item{\code{iters=25}.} An integer. The number of iterations to perform. The estimation may stop earlier, if
   neither the log likelihood \emph{nor} the entropy improves. 
+
 \item{\code{ll.improve=0.001}.} A numeric. The amount the log-likelihood must increase with to be considered an
   improvement. 
-\item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must increase with
+
+\item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must change with
   to be considered an improvement.
+
 \item{\code{newprob=0.001}.} A numeric. When searching for a new masspoint, a new support point is added to
   the distribution with a small probability, then a search is done for a location for this probability 
   which increases the likelihood. \code{newprob} is this small probability. 
@@ -287,36 +302,60 @@ around the program, I have collected them here with their defaults. Some of them
   derivative of the likelihood (in the direction of positive probability) is done.  The reason
   we don't search for the derivative directly is that it tends to find unfavourable points, typically
   duplicates of other points which happen to have a positive derivative due to numerical inaccuracy.
+
 \item{\code{minprob=1e-20}.} A numeric. Masspoints with probability below this are removed. 
+
 \item{\code{eqtol=0.0001}.} A numeric. It sometimes happens that two location points in the mixed proportional
   hazard distribution turns out to be equal. One of them can then be removed. \code{eqtol} is the
   threshold below which the \(\ell^\infty\) distance between two location points is so small that the
   two points are thought to be equal. 
-\item{\code{maxtime=60}.} A numeric. When searching for a new location point, a global search algorithm 
-  from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds.
+
+\item{\code{maxtime=120}.} A numeric. When searching for a new location point, a global search algorithm 
+  from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds. Should be increased if
+  \code{mphcrm} repeatedly complains about not being able to find a new point. However, when
+  there are new points to be found, this will necessarily happen. See also \code{lowint}.
+
 \item{\code{callback=mphcrm.callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
   it is possible to write your own. It will replace the default callback (which you can call from your function).
   In this way you can e.g. get diagnostics on particular coefficients, save intermediate results
   to file, or other partakings. See \code{mphcrm.callback}.
+
 \item{\code{jobname="mphcrm"}.} A character string. The initial portion of the one-line diagnostic. Useful if you
   e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
   you can see the progress. 
+
 \item{\code{trap.interrupt=interactive().}} A logical. If you decide to interrupt an interactive estimation before
   it has terminated, either because you don't want to wait, or because it seems to have run astray,
   the default behaviour for \code{mphcrm} is to catch the interrupt, and return gracefully with the
   result of the estimation so far. This behaviour can be switched off with \code{trap.interrupt=FALSE}.
+
 \item{\code{tol=0.0001}.} A numeric. The (absolute) tolerance for the log-likelihood maximization.
+
 \item{\code{itfac=20}.} An integer. The maximum number of iterations in the BFGS-method is \code{itfac*K}, where
   \code{K} is the number of parameters to estimate.
+
 \item{\code{fishblock=128}.} An integer. The Fisher matrix is created by calling the BLAS \code{dsyrk} with
   blocks of individual gradients. This is the size of the blocks. The optimal size depends on the BLAS version
   and details of your computing contraption. If memory use is an issue with a large number of coefficients
   to estimate, it can be lowered, typically to some other power of two.
+
+\item{\code{lowint=2}.} A numeric, possibly a vector of length the number of transitions. 
+  When searching for the location of a new point, an interval centered
+  at the mean of the old points is used. This is how far from the mean the interval goes to the left.
+  \code{mphcrm} makes no effort at analyzing where the location points may lie, as described in
+  \cite{lindsay83II}, but does a brute force search in a (hyper)rectangle. Setting this parameter too high,
+  increases the risk of finding numerically unfavourable points, but if \code{mphrcm} repeatedly complains about
+  not being able to find new points, it can be increased.
+
+\item{code{highint=2}.} A numeric. Like \code{lowint}, but to the right.
+
 \item{\code{method="BFGS"}.} A character string. The default is the
-  most robust method. In case of convergence problems one may try one of the local gradient based NLOPT-methods:
-  \code{"TNEWTON\_PRECOND", "TNEWTON", "SLSQP", "MMA", "TNEWTON\_RESTART", "TNEWTON\_PRECOND\_RESTART", "VAR1", "VAR2"}.
-  The Newton-methods can achieve a smaller gradient than BFGS. 
-  For these, it could be a good idea to increase \code{itfac}.
+  most robust method. In case of convergence problems, or for fun, one
+  may try one of the local gradient based NLOPT-methods:
+  \code{"TNEWTON\_PRECOND", "TNEWTON", "SLSQP", "MMA",
+    "TNEWTON\_RESTART", "TNEWTON\_PRECOND\_RESTART", "VAR1", "VAR2"}.
+  The Newton-methods can achieve a smaller gradient than BFGS.  For
+  these, it could be a good idea to increase \code{itfac}.
 
 \item{\code{cluster=NULL.}} Cluster specification from package \pkg{parallel} or \pkg{snow}.
   In addition to utilizing all the cores/cpus on a computer, \code{mphcrm} may also
@@ -329,7 +368,7 @@ around the program, I have collected them here with their defaults. Some of them
   the nodes you are running on are approximately equally fast. 
 \end{itemize}
 
-\bibliographystyle{amsplain}
+\bibliographystyle{apalike}
 \bibliography{biblio}
 
 \end{document}

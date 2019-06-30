@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-06-27 r76743) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-06-28 r76752) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -75,10 +75,10 @@ job     0.00355 0.00190
 program 0.00190 0.00102
 > 
 > # Then make a state factor
-> state <- dataset[,factor(alpha+1,levels=1:2)]
-> levels(state) <- c('unemp','onprogram')
-> dataset$state <- state
-> names(risksets) <- levels(state)
+> dataset$state <- dataset[,factor(alpha+1,labels=c('unemp','onprogram'))]
+> names(risksets) <- levels(dataset$state)
+> # reset seed, the previous mphcrm may have slightly different behaviour on different architectures.
+> set.seed(42)
 > dataset[, f := factor(sample(1:6,.N,replace=TRUE))]
 > dataset[, g := factor(sample(1:4,.N,replace=TRUE))]
 > opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(state)+ID(id), data=dataset, 
@@ -86,64 +86,72 @@ program 0.00190 0.00102
 > 
 > summary(opt[[1]])
 $loglik
-[1] -19815
+[1] -19817
 
 $coefs
-                  value      se        t Pr(>|t|)
-job.x1           0.8967 0.00954   93.989 0.00e+00
-job.x2          -0.8051 0.00738 -109.120 0.00e+00
-job.alpha       -0.1788 0.02651   -6.744 1.63e-11
-job.f.2         -0.1316 0.04163   -3.161 1.58e-03
-job.f.3         -0.1382 0.04296   -3.217 1.30e-03
-job.f.4         -0.1458 0.04396   -3.317 9.14e-04
-job.f.5         -0.1683 0.04361   -3.859 1.15e-04
-job.f.6         -0.2121 0.03802   -5.579 2.47e-08
-program.x1       0.9148 0.01801   50.783 0.00e+00
-program.x2       0.3729 0.01811   20.595 2.12e-92
-program.f.2     -0.2780 0.14529   -1.913 5.58e-02
-program.f.3     -0.0563 0.13897   -0.405 6.86e-01
-program.f.4     -0.3279 0.14012   -2.340 1.93e-02
-program.f.5     -0.2471 0.14284   -1.730 8.37e-02
-program.f.6     -0.4639 0.13034   -3.559 3.74e-04
-program.g.2     -0.4135 0.12609   -3.280 1.04e-03
-program.g.3     -0.3312 0.14803   -2.238 2.53e-02
-program.g.4     -0.0369 0.14747   -0.250 8.03e-01
-program.f:g.2:2  0.3736 0.20690    1.806 7.10e-02
-program.f:g.2:3  0.4735 0.21125    2.241 2.50e-02
-program.f:g.2:4  0.0920 0.21105    0.436 6.63e-01
-program.f:g.3:2  0.1561 0.19140    0.816 4.15e-01
-program.f:g.3:3  0.1442 0.20409    0.706 4.80e-01
-program.f:g.3:4 -0.2434 0.20214   -1.204 2.29e-01
-program.f:g.4:2  0.6377 0.20171    3.161 1.57e-03
-program.f:g.4:3  0.5106 0.20665    2.471 1.35e-02
-program.f:g.4:4  0.0267 0.20826    0.128 8.98e-01
-program.f:g.5:2  0.2280 0.19230    1.186 2.36e-01
-program.f:g.5:3  0.6444 0.21921    2.939 3.29e-03
-program.f:g.5:4  0.0360 0.22715    0.159 8.74e-01
-program.f:g.6:2  0.7247 0.19768    3.666 2.48e-04
-program.f:g.6:3  0.4972 0.19777    2.514 1.20e-02
-program.f:g.6:4  0.0818 0.19282    0.424 6.72e-01
+                   value      se         t  Pr(>|t|)
+job.x1           0.89634 0.00931   96.2537  0.00e+00
+job.x2          -0.80995 0.00759 -106.7510  0.00e+00
+job.alpha       -0.17688 0.02670   -6.6241  3.67e-11
+job.f.2          0.07449 0.04287    1.7377  8.23e-02
+job.f.3         -0.06195 0.04409   -1.4049  1.60e-01
+job.f.4          0.11317 0.04148    2.7287  6.37e-03
+job.f.5          0.01854 0.04311    0.4301  6.67e-01
+job.f.6         -0.06108 0.04632   -1.3185  1.87e-01
+program.x1       0.91250 0.01807   50.5045  0.00e+00
+program.x2       0.37743 0.01749   21.5830 4.31e-101
+program.f.2      0.20536 0.13447    1.5271  1.27e-01
+program.f.3      0.02068 0.13735    0.1505  8.80e-01
+program.f.4      0.00632 0.12036    0.0525  9.58e-01
+program.f.5     -0.13482 0.14185   -0.9505  3.42e-01
+program.f.6      0.28122 0.14694    1.9138  5.57e-02
+program.g.2      0.03025 0.13082    0.2312  8.17e-01
+program.g.3      0.14083 0.13864    1.0157  3.10e-01
+program.g.4     -0.02071 0.14072   -0.1472  8.83e-01
+program.f:g.2:2 -0.30106 0.19641   -1.5328  1.25e-01
+program.f:g.2:3 -0.24366 0.19296   -1.2627  2.07e-01
+program.f:g.2:4  0.03646 0.20306    0.1795  8.58e-01
+program.f:g.3:2  0.10878 0.19535    0.5568  5.78e-01
+program.f:g.3:3 -0.17411 0.19189   -0.9073  3.64e-01
+program.f:g.3:4  0.16215 0.19720    0.8223  4.11e-01
+program.f:g.4:2 -0.00186 0.17351   -0.0107  9.91e-01
+program.f:g.4:3  0.18890 0.19390    0.9742  3.30e-01
+program.f:g.4:4  0.12597 0.20180    0.6242  5.32e-01
+program.f:g.5:2  0.19735 0.20546    0.9605  3.37e-01
+program.f:g.5:3  0.21733 0.20211    1.0753  2.82e-01
+program.f:g.5:4  0.14749 0.19955    0.7391  4.60e-01
+program.f:g.6:2  0.09271 0.20553    0.4511  6.52e-01
+program.f:g.6:3 -0.48317 0.22859   -2.1137  3.46e-02
+program.f:g.6:4 -0.02354 0.21621   -0.1089  9.13e-01
 
 $moments
           mean variance sd
-job     0.0731        0  0
-program 0.0537        0  0
+job     0.0629        0  0
+program 0.0380        0  0
 
 > 
 > # single risk
 > dataset <- dataset[state=='onprogram']
 > opt <- mphcrm(d ~ x1+x2+D(duration)+ID(id), data=dataset, 
-+               control=mphcrm.control(threads=1,iters=1,callback=NULL))
++               control=mphcrm.control(threads=1,iters=3,callback=NULL))
 > summary(opt[[1]]$par)
 $value
 job.x1 job.x2 
- 0.813 -0.835 
+ 0.932 -0.947 
 
-$moments
-         prob    job
-point  1    1 0.0558
+$mphdist
+          prob    job
+point  1 0.619 0.0802
+point  2 0.207 0.3845
+point  3 0.173 0.0161
 
+> mphmoments(opt[[1]])
+     mean variance    sd
+job 0.132   0.0172 0.131
+> mphcov(opt[[1]])
+       job
+job 0.0172
 > 
 > proc.time()
    user  system elapsed 
-  6.247   0.124   2.923 
+   5.29    1.20    4.72 

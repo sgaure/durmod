@@ -58,23 +58,24 @@
 #' job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
 #' Then name \code{job} refers to a level in \code{d}, the transition taken. 
 #' @param data
-#' A data frame which contains the covariates.
+#' A data frame which contains the covariates. It must be sorted on individuals.
 #' @param timing
 #' character. The timing in the duration model. Can be one of
 #' \itemize{
-#' \item "exact" The timing is exact, the transition occured at the end of the observation interval.
-#' \item "interval" The transition occured some time during the observation interval. This model
+#' \item \code{"exact"}. The timing is exact, the transition occured at the end of the observation interval.
+#' \item \code{"interval"}. The transition occured some time during the observation interval. This model
 #'   can be notoriously hard to estimate due to unfavourable numerics. It could be worthwhile to
 #'   lower the control parameter \code{ll.improve} to 0.0001 or something, to ensure it does not
 #'   give up to early.
-#' \item "none" There is no timing, the transition occured, or not. A logit model is used.
+#' \item \code{"none"}. There is no timing, the transition occured, or not. A logit model is used.
 #' }
 #' @param risksets
 #' A list of character vectors. Each vector is a list of transitions, i.e. which risks are present for
 #' the observation. The elements of the vectors must be levels of the covariate which is the
 #' left hand side of the \code{formula}.
 #' If the state variable in the formula is a factor, the \code{risksets} argument should be a named list, with
-#' names matching the levels of \code{state}.
+#' names matching the levels of \code{state}. If all risks are present at all times, the \code{risksets}-argument
+#' can be specified as \code{NULL}, or ignored.
 #' @param subset
 #' For specifying a subset of the dataset, similar to \code{\link{lm}}.
 #' @param na.action
@@ -93,18 +94,18 @@
 #' After the initial model has been estimated, it tries to add a masspoint to the mixing
 #' distribution, then estimates the model with this new distribution.
 #'
-#' It continues to add masspoints in this way until eithr it can not improve the likelihood, or
-#' the number of iterations as specified in control$iters are reached.
+#' The algorithm continues to add masspoints in this way until either it can not improve the likelihood, or
+#' the number of iterations as specified in \code{control$iters} are reached.
 #'
 #' The result of every iteration is returned in a list.
 #'
 #' If you interrupt \code{mphcrm} it will catch the interrupt and return with the
-#' estimates it has found so far.
+#' estimates it has found so far. This behaviour can be switched off with \code{control$trap.interrupt=FALSE}.
 #' @note
 #' The algorithm is not fully deterministic. New points are searched for randomly, there
 #' is no canonical order in which they can be found. It can happen that a point is found
 #' early which makes the rest of the estimation hard, so it terminates early. In particular
-#' when using interval timing. One should
+#' when using interval timing. One should then
 #' make a couple of runs to ensure they yield reasonably equal results.
 #' @examples
 #' data(durdata)
@@ -240,6 +241,7 @@ mphcrm.control <- function(...) {
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
+               lowint=2,highint=2,
                tol=1e-4,
                method='BFGS',
                itfac=20L,
@@ -276,7 +278,9 @@ mphcrm.control <- function(...) {
 #' @details
 #' If you write your own callback function it will replace the default function, but you can
 #' of course call the default callback from your own callback function, and in addition print your
-#' own diagnostics, or save the intermediate \code{opt} in a file, or whatever.
+#' own diagnostics, or save the intermediate \code{opt} in a file, or whatever. You can even
+#' stop the estimation by doing a \code{stop('<some message>')}, and \code{mphcrm} will return
+#' with the estimates done so far, provided the control parameter \code{trap.interrupt=TRUE}.
 #' 
 #' @note
 #' Beware that
@@ -306,7 +310,7 @@ mphcrm.callback <- local({
     } else {
       if(is.numeric(opt$convergence) && opt$convergence != 0) {
         if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) 
-          cat(jobname, format(now,control$tspec), fromwhere, 'convstatus:"',opt$convergence, opt$message,'"\n')
+          cat(jobname, format(now,control$tspec), fromwhere, 'convergence failure:"',opt$convergence, opt$message,'"\n')
       }
     }
 
@@ -314,7 +318,7 @@ mphcrm.callback <- local({
     tdiff <- timestr(difftime(now,lastfull,units='s'))
     assign('lastfull',now,environment(sys.function())) # 
     rc <- if(!is.null(opt$fisher)) rcond(opt$fisher) else NA
-    grd <- if(!is.null(opt$gradient)) sqrt(sum(opt$gradient^2)) else NA
+    grd <- if(!is.null(opt$gradient)) sqrt(mean(opt$gradient^2)) else NA
     p <- a2p(opt$par$pargs)
     cat(jobname,format(now,control$tspec), 
         sprintf('i:%d p:%d L:%.4f g:%.3g mp:%.5g rc:%.2g e:%.4f t:%s\n',
@@ -359,8 +363,8 @@ pointiter <- function(dataset,pset,control) {
 
   tryCatch(
     {
-      i <- 0; done <- FALSE
-      while(!done) {
+      i <- 0; improve <- TRUE
+      while(improve && i < control$iters) {
         i <- i+1
         control$mainiter <- i
         newopt <- ml(dataset,pset,control)
@@ -373,10 +377,11 @@ pointiter <- function(dataset,pset,control) {
         # check termination
         ll.improve <- newopt$value - prevopt$value
         e.improve <- abs(newopt$entropy - prevopt$entropy)
-        done <- (ll.improve < control$ll.improve && e.improve < control$e.improve) || i >= control$iters
+        improve <- (ll.improve > control$ll.improve || e.improve > control$e.improve)
         prevopt <- newopt
-        if(!done) pset <- addpoint(dataset,newopt$par,newopt$value,control)
+        if(improve && i < control$iters) pset <- addpoint(dataset,newopt$par,newopt$value,control)
       }
+      if(!improve) opt <- opt[-1]
     },
     error=function(e) {
       assign('intr',TRUE,environment(sys.function()))
@@ -481,25 +486,25 @@ newpoint <- function(dataset,pset,value,control) {
   }
 
   # find ranges for the mus.
-  # stick to the mean +/- 4 sd in each dimension
-  mom <- mphmoments.log(pset)
-  if(length(pset$pargs)+1 >= 4) {
-    low <- mom[,'mean'] - 4*mom[,'sd']
-    high <- mom[,'mean'] + 4*mom[,'sd']
-  } else {
-    low <- mom[,'mean'] - 4
-    high <- mom[,'mean'] + 4
-  }
+  # stick to the mean +/- something  in each dimension
+  mom <- mphmoments(pset)
+  low <- log(mom[,'mean']) - control$lowint
+  high <- log(mom[,'mean']) + control$highint
   args <- runif(length(low),0,1)*(high-low) + low
   muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
+                                    xtol_rel=0, xtol_abs=0,
                                     maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
+
   if(!gdiff && !(muopt$status %in% c(0,2))) {
+    muopt$convergence <- muopt$status
+    control$callback('newpoint',muopt,dataset,control)
     # that one failed, try gdiff instead, broader interval
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
-    muopt <- nloptr::nloptr(args, fun, lb=low-4, ub=high+4,gdiff=TRUE,
+    muopt <- nloptr::nloptr(args, fun, lb=low-2, ub=high+2,gdiff=TRUE,
                             opts=list(algorithm='NLOPT_GN_ISRES',stopval=0,
+                                      xtol_rel=0, xtol_abs=0,
                                       maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
   }
   muopt$objective <- -muopt$objective
@@ -602,7 +607,7 @@ optfull <- function(dataset, pset, control) {
 
   args <- flatten(pset)
   val <- mphloglik(dataset,pset,dogradient=TRUE,control=control)
-  tol <- 1e-5*control$tol/(control$tol+abs(val))
+  tol <- 1e-4*control$tol/(control$tol+abs(val))
   opt <- optim(args,LL,gLL,method=control$method,
         control=list(trace=0,REPORT=10,maxit=control$itfac*length(args),lmm=60,
                      reltol=tol),

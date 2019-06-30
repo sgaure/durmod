@@ -33,22 +33,23 @@ the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should o
 job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
 Then name \code{job} refers to a level in \code{d}, the transition taken.}
 
-\item{data}{A data frame which contains the covariates.}
+\item{data}{A data frame which contains the covariates. It must be sorted on individuals.}
 
 \item{risksets}{A list of character vectors. Each vector is a list of transitions, i.e. which risks are present for
 the observation. The elements of the vectors must be levels of the covariate which is the
 left hand side of the \code{formula}.
 If the state variable in the formula is a factor, the \code{risksets} argument should be a named list, with
-names matching the levels of \code{state}.}
+names matching the levels of \code{state}. If all risks are present at all times, the \code{risksets}-argument
+can be specified as \code{NULL}, or ignored.}
 
 \item{timing}{character. The timing in the duration model. Can be one of
 \itemize{
-\item "exact" The timing is exact, the transition occured at the end of the observation interval.
-\item "interval" The transition occured some time during the observation interval. This model
+\item \code{"exact"}. The timing is exact, the transition occured at the end of the observation interval.
+\item \code{"interval"}. The transition occured some time during the observation interval. This model
   can be notoriously hard to estimate due to unfavourable numerics. It could be worthwhile to
   lower the control parameter \code{ll.improve} to 0.0001 or something, to ensure it does not
   give up to early.
-\item "none" There is no timing, the transition occured, or not. A logit model is used.
+\item \code{"none"}. There is no timing, the transition occured, or not. A logit model is used.
 }}
 
 \item{subset}{For specifying a subset of the dataset, similar to \code{\link{lm}}.}
@@ -102,19 +103,19 @@ Then it estimates the full model, still with one intercept in each transition.
 After the initial model has been estimated, it tries to add a masspoint to the mixing
 distribution, then estimates the model with this new distribution.
 
-It continues to add masspoints in this way until eithr it can not improve the likelihood, or
-the number of iterations as specified in control$iters are reached.
+The algorithm continues to add masspoints in this way until either it can not improve the likelihood, or
+the number of iterations as specified in \code{control$iters} are reached.
 
 The result of every iteration is returned in a list.
 
 If you interrupt \code{mphcrm} it will catch the interrupt and return with the
-estimates it has found so far.
+estimates it has found so far. This behaviour can be switched off with \code{control$trap.interrupt=FALSE}.
 }
 \note{
 The algorithm is not fully deterministic. New points are searched for randomly, there
 is no canonical order in which they can be found. It can happen that a point is found
 early which makes the rest of the estimation hard, so it terminates early. In particular
-when using interval timing. One should
+when using interval timing. One should then
 make a couple of runs to ensure they yield reasonably equal results.
 }
 \examples{
