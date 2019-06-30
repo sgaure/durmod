@@ -494,7 +494,7 @@ newpoint <- function(dataset,pset,value,control) {
   muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
                                     xtol_rel=0, xtol_abs=0,
-                                    maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
+                                    maxtime=control$newpoint.maxtime,maxeval=50000,population=10*length(args)))
 
   if(!gdiff && !(muopt$status %in% c(0,2))) {
     muopt$convergence <- muopt$status
@@ -505,7 +505,7 @@ newpoint <- function(dataset,pset,value,control) {
     muopt <- nloptr::nloptr(args, fun, lb=low-2, ub=high+2,gdiff=TRUE,
                             opts=list(algorithm='NLOPT_GN_ISRES',stopval=0,
                                       xtol_rel=0, xtol_abs=0,
-                                      maxtime=control$newpoint.maxtime,maxeval=10000,population=10*length(args)))
+                                      maxtime=control$newpoint.maxtime,maxeval=50000,population=10*length(args)))
   }
   muopt$objective <- -muopt$objective
   muopt$convergence <- muopt$status
