@@ -308,6 +308,10 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{tol=0.0001}.} A numeric. The (absolute) tolerance for the log-likelihood maximization.
 \item{\code{itfac=20}.} An integer. The maximum number of iterations in the BFGS-method is \code{itfac*K}, where
   \code{K} is the number of parameters to estimate.
+\item{\code{fishblock=128}.} An integer. The Fisher matrix is created by calling the BLAS \code{dsyrk} with
+  blocks of individual gradients. This is the size of the blocks. The optimal size depends on the BLAS version
+  and details of your computing contraption. If memory use is an issue with a large number of coefficients
+  to estimate, it can be lowered, typically to some other power of two.
 \item{\code{method="BFGS"}.} A character string. The default is the
   most robust method. In case of convergence problems one may try one of the local gradient based NLOPT-methods:
   \code{"TNEWTON\_PRECOND", "TNEWTON", "SLSQP", "MMA", "TNEWTON\_RESTART", "TNEWTON\_PRECOND\_RESTART", "VAR1", "VAR2"}.

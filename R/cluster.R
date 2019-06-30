@@ -86,7 +86,7 @@ mphloglik <- local({
     mc[[2L]] <- NULL  
     # get the other args
     args <- eval.parent(mc)
-    args[['control']] <- args[['control']][c('threads')]
+    args[['control']] <- args[['control']][c('threads','fishblock')]
     # put back dataset
     mc <- as.call(c(list(quote(durmod::.cloglik)),quote(dset), args))
     ret <- parallel::clusterCall(cluster, eval, mc)

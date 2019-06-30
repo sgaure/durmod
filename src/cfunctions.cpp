@@ -400,6 +400,8 @@ NumericVector cloglik(List dataset, List pset, List control,
   List risklist = as<List>(dataset["riskset"]);
   const int nrisks = risklist.size();
   IntegerVector state = as<IntegerVector>(dataset["state"]);
+  
+  const int fishblock = as<IntegerVector>(control["fishblock"])[0];
 
   bool *riskmasks = 0;
   if(nrisks > 0) {
@@ -477,7 +479,6 @@ NumericVector cloglik(List dataset, List pset, List control,
     }
   }
 
-  const int fishblock = 128 ;
   const bool dograd = dogradient ? true : dofisher;
 
   // find the number of parameters

@@ -242,6 +242,7 @@ mphcrm.control <- function(...) {
                tol=1e-4,
                method='BFGS',
                itfac=20L,
+               fishblock=128L,
                callback=mphcrm.callback,
                cluster=NULL)
   args <- list(...)
@@ -598,10 +599,9 @@ optfull <- function(dataset, pset, control) {
   args <- flatten(pset)
   val <- mphloglik(dataset,pset,dogradient=TRUE,control=control)
   tol <- 1e-5*control$tol/(control$tol+abs(val))
-  pscale <- pmax(abs(attr(val,'gradient')),1e-9)
   opt <- optim(args,LL,gLL,method=control$method,
         control=list(trace=0,REPORT=10,maxit=control$itfac*length(args),lmm=60,
-                     reltol=tol, parscale=pscale),
+                     reltol=tol),
         skel=attr(args,'skeleton'), ctrl=control,dataset=dataset)
   opt$par <- unflatten(opt$par)
   opt
