@@ -307,10 +307,17 @@ mphcrm.callback <- local({
       p <- a2p(opt$pargs)
       bad <- list(...)[['remove']]
       cat(jobname,  format(Sys.time(),control$tspec), 'remove probs', sprintf(' %.2e',p[bad]),'\n')
+    } else if(fromwhere=='equalpoints') {
+      cat(jobname, format(Sys.time(), control$tspec), 'equal points combined:\n')
+      print(list(...)[['eqpoints']])
     } else {
       if(is.numeric(opt$convergence) && opt$convergence != 0) {
-        if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) 
-          cat(jobname, format(now,control$tspec), fromwhere, 'convergence failure:"',opt$convergence, opt$message,'"\n')
+        if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) {
+          mess <- if(is.null(opt$message)) '' else opt$message
+          cat(sprintf('%s %s %s: convergence failure %.4f, %d %s\n',
+                      jobname, format(now,control$tspec), fromwhere,
+                      opt$value, opt$convergence, mess))
+        }
       }
     }
 
@@ -492,22 +499,26 @@ newpoint <- function(dataset,pset,value,control) {
   high <- log(mom[,'mean']) + control$highint
   args <- runif(length(low),0,1)*(high-low) + low
   muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
-                          opts=list(algorithm='NLOPT_GN_ISRES',stopval=if(gdiff) 0 else -value-newprob,
+                          opts=list(algorithm='NLOPT_GN_ISRES',
+                                    stopval=if(gdiff) -control$ll.improve else -value-control$ll.improve,
                                     xtol_rel=0, xtol_abs=0,
-                                    maxtime=control$newpoint.maxtime,maxeval=50000,population=10*length(args)))
+                                    maxtime=control$newpoint.maxtime,
+                                    maxeval=10000*length(args),population=20*length(args)))
 
   if(!gdiff && !(muopt$status %in% c(0,2))) {
     muopt$convergence <- muopt$status
+    muopt$value <- muopt$objective 
     control$callback('newpoint',muopt,dataset,control)
     # that one failed, try gdiff instead, broader interval
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
     muopt <- nloptr::nloptr(args, fun, lb=low-2, ub=high+2,gdiff=TRUE,
-                            opts=list(algorithm='NLOPT_GN_ISRES',stopval=0,
+                            opts=list(algorithm='NLOPT_GN_ISRES',stopval=-control$ll.improve,
                                       xtol_rel=0, xtol_abs=0,
-                                      maxtime=control$newpoint.maxtime,maxeval=50000,population=10*length(args)))
+                                      maxtime=control$newpoint.maxtime,
+                                      maxeval=10000*length(args),population=20*length(args)))
   }
-  muopt$objective <- -muopt$objective
+  muopt$value <- muopt$objective 
   muopt$convergence <- muopt$status
   control$callback('newpoint',muopt,dataset,control)
   
@@ -536,7 +547,7 @@ badpoints <- function(pset,control) {
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
         colnames(mumat) <- names(pset$parset)
-        control$callback('equalpoints',pset,NULL,control,cbind(prob=c(p[j],p[i]),exp(mumat)))
+        control$callback('equalpoints',pset,NULL,control,eqpoints=cbind(prob=c(p[j],p[i]),exp(mumat)))
 #        cat(sprintf('%s %s points %d and %d are equal\n',jobname, format(Sys.time(),control$tspec),j,i),'\n')
 #        print()
         okpt[i] <- FALSE

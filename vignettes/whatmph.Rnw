@@ -196,8 +196,8 @@ Here is a pre-made fit:
 <<>>=
 summary(fit[[1]])
 @ 
-For an explanation of the warning about ``NaNs produced'', see the
-\code{vignette("gorydetails")}.
+% For an explanation of the warning about ``NaNs produced'', see the
+% \code{vignette("gorydetails")}.
 
 The full estimation can be rerun with the commands:
 <<eval=FALSE>>=
@@ -217,18 +217,19 @@ mphcov(fit[[1]])
 The true values used to generate the dataset was 
 \code{job.x1=1}, \code{job.x2=-1}, \code{job.alpha=0.2}, \code{program.x1=1}, and
 \code{program.x2=0.5}. 
-The unobserved distribution, the proportional hazards,
-had means: \code{job: 0.138}, \code{program: 0.0827}. Their variances were 0.0306 and 0.0108.
-Their covariance was 0.00593. Although the first moments should be identified,
-we see that our estimates of the moments are poor, mostly due to a couple of low probability points
-with extremely high proportional hazards. If we go back to 10 points, it is better:
+The true proportional hazard moments are for convenience stored as attributes
+in the dataset
 <<>>=
-summary(fit[['iter10']])
+attributes(durdata)[c('means','cov')]
 @ 
-It sometimes happens that such extreme points are found, I haven't quite figured out why,
-but think it is a numerical issue, or a small sample problem. Fortunately, it only
-affects the mixed proportional hazard distribution. If this is of interest, one should
-look out for such extremes.
+
+In this case the estimated mixture has moments fairly close to the true ones, but beware that
+the estimation process sometimes finds a couple of points with very low probability and very
+high hazard. If these very low probabilities are imprecisely estimated, so that they should
+really have been an order of magnitude smaller (\(10^{-6}\) instead of \(10^{-5}\)), the moments of
+the mixture distribution can be way off. It is good practice to inspect the
+mixture distribution for such extreme points, and go back to a previous iteration (which
+has slightly worse likelihood) without such extreme points.
 
 \section{More options}
 \subsection{Interval timing}
@@ -313,7 +314,8 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{maxtime=120}.} A numeric. When searching for a new location point, a global search algorithm 
   from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds. Should be increased if
   \code{mphcrm} repeatedly complains about not being able to find a new point. However, when
-  there are new points to be found, this will necessarily happen. See also \code{lowint}.
+  there are noe new points to be found at the end of the estimation, this will necessarily happen. 
+  See also \code{lowint}.
 
 \item{\code{callback=mphcrm.callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
   it is possible to write your own. It will replace the default callback (which you can call from your function).
@@ -339,15 +341,19 @@ around the program, I have collected them here with their defaults. Some of them
   and details of your computing contraption. If memory use is an issue with a large number of coefficients
   to estimate, it can be lowered, typically to some other power of two.
 
-\item{\code{lowint=2}.} A numeric, possibly a vector of length the number of transitions. 
-  When searching for the location of a new point, an interval centered
-  at the mean of the old points is used. This is how far from the mean the interval goes to the left.
-  \code{mphcrm} makes no effort at analyzing where the location points may lie, as described in
-  \cite{lindsay83II}, but does a brute force search in a (hyper)rectangle. Setting this parameter too high,
-  increases the risk of finding numerically unfavourable points, but if \code{mphrcm} repeatedly complains about
-  not being able to find new points, it can be increased.
+\item{\code{lowint=2}.} A numeric, possibly a vector of length the
+  number of transitions.  When searching for the location of a new
+  point, an interval centered at the mean of the old points is
+  used. \code{lowint} is how far from the mean (in log units) the
+  interval goes to the left.  \code{mphcrm} makes no effort at
+  analyzing where the location points may lie, as described in
+  \cite{lindsay83II}, but does a brute force search in a
+  (hyper)rectangle. Setting this parameter too high, increases the
+  risk of finding numerically unfavourable points, but if
+  \code{mphrcm} repeatedly complains about not being able to find new
+  points, it can be increased. See also \code{maxtime}.
 
-\item{code{highint=2}.} A numeric. Like \code{lowint}, but to the right.
+\item{\code{highint=2}.} A numeric. Like \code{lowint}, but to the right.
 
 \item{\code{method="BFGS"}.} A character string. The default is the
   most robust method. In case of convergence problems, or for fun, one
