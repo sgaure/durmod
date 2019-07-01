@@ -161,7 +161,9 @@ should only explain the \code{"job"} transition. The \code{ID(id)} specifies
 that the covariate \code{id} identifies individuals. The \code{D(duration)} specifies
 that the covariate \code{duration} contains the durations of the observations. Finally,
 the \code{S(state)} term specifies that the covariate \code{state} is a factor which
-indexes into the \code{risksets} argument. 
+indexes into the \code{risksets} argument.  In this application, we could as well
+have replaced \code{C(job,alpha)} with \code{C(job,state)} in the formula, since
+these two covariates are essentially the same.
 
 \code{mphcrm} writes diagnostic output, one line per iteration. It contains
 potentially useful information. There is a time stamp, the iteration number, the number
@@ -314,7 +316,7 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{maxtime=120}.} A numeric. When searching for a new location point, a global search algorithm 
   from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds. Should be increased if
   \code{mphcrm} repeatedly complains about not being able to find a new point. However, when
-  there are noe new points to be found at the end of the estimation, this will necessarily happen. 
+  there are no new points to be found at the end of the estimation, this will necessarily happen. 
   See also \code{lowint}.
 
 \item{\code{callback=mphcrm.callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
