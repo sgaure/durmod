@@ -349,7 +349,7 @@ pointiter <- function(dataset,pset,control) {
     }
     -mphloglik(dataset,pset,control=control)
   }
-  opt0 <- optim(runif(length(pset$parset),-4,-1), LL0,method='BFGS',dataset=dataset,pset=pset)
+  opt0 <- optim(runif(length(pset$parset),-10,0), LL0,method='BFGS',dataset=dataset,pset=pset)
 #  message('zero model: '); print(opt0$par)
   for(i in seq_along(pset$parset)) {
     pset$parset[[i]]$mu[] <- opt0$par[i]
@@ -389,6 +389,11 @@ pointiter <- function(dataset,pset,control) {
         if(improve && i < control$iters) pset <- addpoint(dataset,newopt$par,newopt$value,control)
       }
       if(!improve) opt <- opt[-1]
+      badset <- badpoints(opt[[1]]$par,control)
+      if(isTRUE(attr(badset, 'badremoved'))) {
+        opt[[1]]$par <- optfull(dataset,badset,control)
+      }
+
     },
     error=function(e) {
       assign('intr',TRUE,environment(sys.function()))
@@ -404,15 +409,6 @@ pointiter <- function(dataset,pset,control) {
       warning(e, "returning most recent estimate ")
     },
     finally=if(intr) opt <- iopt)
-
-  if(!intr) {
-    badset <- badpoints(opt[[1]]$par,control)
-    if(isTRUE(attr(badset, 'badremoved'))) {
-      cat(sprintf('redo bad prob, ll=%.6f\n',opt[[1]]$value))
-      opt[[1]]$par <- optfull(dataset,badset,control)
-      cat(sprintf('new ll=%.6f\n',opt[[1]]$value))
-    }
-  }
 
   structure(opt,class='mphcrm.list')
 }
@@ -864,9 +860,10 @@ mymodelmatrix <- function(formula,mf) {
 
       codes <- codes[contains[isfac]]
       flist <- eval(as.call(lapply(c('list',contains[isfac]),as.name)), mf,environment(formula))
-      # remove a reference level if contrasts
+
+      # remove a reference level if contrasts, set it to NA
       fl <- mapply(function(f,useall) {
-        if(useall) return(f)
+        if(useall) return(factor(f))
         factor(f,levels=c(NA,levels(f)[-1]))
       }, flist, codes==2, SIMPLIFY=FALSE)
 

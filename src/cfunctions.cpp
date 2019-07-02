@@ -563,8 +563,9 @@ NumericVector cloglik(List dataset, List pset, List control,
       // update llspell with the observation log likelihood 
       obsloglik(d[i], timing, lh, duration[i], mup, npoints, transitions, riskmask, llspell);
       // update dllspell with the gradient of the observation log likelihood
-      if(dograd) gobsloglik(d[i], timing, lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
-			    faclevels, riskmask, nvars, matp, factors, dllspell);
+      if(dograd) 
+	gobsloglik(d[i], timing, lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
+		   faclevels, riskmask, nvars, matp, factors, dllspell);
     }
 
     // We have collected the loglikelihood of a spell, one for each masspoint
