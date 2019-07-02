@@ -261,6 +261,8 @@ transition probabilities.
 internally \code{mphcrm} does not create a large model matrix filled with dummy variables. This means
 that factors with many levels is quite fast to estimate.
 
+\code{mphcrm} removes factor levels as explanatory for a transition if they are not observed
+in any state with a risk for this transition.
 \section{Control parameters}
 There are many control parameters. Rather than scattering more or less arbitrary constants 
 around the program, I have collected them here with their defaults. Some of them you may want to tinker with.

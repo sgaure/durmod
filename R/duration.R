@@ -847,8 +847,10 @@ mymodelmatrix <- function(formula,mf,risksets) {
 
 # then the factor related stuff
     # which observations are under risk for this transition?
-    thistr <- levels(df)[t+ztrans]
-    riskobs <- sapply(risksets[state], function(r) thistr %in% r)
+    if(!is.null(risksets)) {
+      thistr <- levels(df)[t+ztrans]
+      riskobs <- sapply(risksets[state], function(r) thistr %in% r)
+    } else riskobs <- seq_along(df)
 
     faclist <- lapply(colnames(fact), function(term) {
       codes <- fact[,term]
