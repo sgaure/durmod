@@ -132,7 +132,7 @@ mphcrm <- function(formula,data,risksets=NULL,
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(model.frame)
 
-  dataset <- mymodelmatrix(F,mf)
+  dataset <- mymodelmatrix(F,mf,risksets)
 
   dataset$timing <- timing
   id <- dataset$id
@@ -741,7 +741,7 @@ makeparset <- function(dataset,npoints,oldset) {
 }
 
 
-mymodelmatrix <- function(formula,mf) {
+mymodelmatrix <- function(formula,mf,risksets) {
 
   #### Handle the specials ####
   mt <- terms(formula, specials=c('ID','D', 'S', 'C'))
@@ -846,6 +846,10 @@ mymodelmatrix <- function(formula,mf) {
     mat <- t(model.matrix(mt,mf))
 
 # then the factor related stuff
+    # which observations are under risk for this transition?
+    thistr <- levels(df)[t+ztrans]
+    riskobs <- sapply(risksets[state], function(r) thistr %in% r)
+
     faclist <- lapply(colnames(fact), function(term) {
       codes <- fact[,term]
 
@@ -863,11 +867,15 @@ mymodelmatrix <- function(formula,mf) {
 
       # remove a reference level if contrasts, set it to NA
       fl <- mapply(function(f,useall) {
-        if(useall) return(factor(f))
-        factor(f,levels=c(NA,levels(f)[-1]))
+        if(useall) return(f)
+        # reference is the first level that is observed
+        factor(f,exclude=levels(factor(f[riskobs]))[1])
       }, flist, codes==2, SIMPLIFY=FALSE)
 
+      # we also remove interaction levels which are never observed in a state
+      # which can make this transition
       iaf <- Reduce(`:`, fl)
+      iaf <- factor(iaf,levels=levels(factor(iaf[riskobs])))
       if(any(!isfac)) {
         attr(iaf,'x') <- as.matrix(Reduce('*',eval(as.call(lapply(c('list',contains[!isfac]),as.name)),
                                                    mf,environment(formula))))
