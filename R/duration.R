@@ -407,6 +407,7 @@ pointiter <- function(dataset,pset,control) {
       if(!control$trap.interrupt) stop('interrupt')
  #     try(control$callback('interrupt', iopt, dataset, control))
       warning(e, "returning most recent estimate ")
+      message('... interrupt cleanup ...')
     },
     finally=if(intr) opt <- iopt)
 
