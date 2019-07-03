@@ -818,13 +818,15 @@ mymodelmatrix <- function(formula,mf,risksets) {
   # and a list of factors
   data <- lapply(seq_len(transitions), function(t) {
     
+    # name of this transition
+    thistr <- levels(df)[t+ztrans]
+
     # find the formula for
     # this transition. Add in all the conditional covariates for this transition
     ff <- pureF
-    tnam <- levels(df)[t+ztrans]
-    if(tnam %in% names(cvars)) {
+    if(thistr %in% names(cvars)) {
       # awkward, cvars may have duplicate names if C(foo, a+b) + C(foo,d+c)
-      for(i in (which(names(cvars) %in% tnam)))
+      for(i in (which(names(cvars) %in% thistr)))
         ff <- update(ff, as.formula(bquote(. ~ . + .(cvars[[i]]))))
     } 
 
@@ -843,16 +845,27 @@ mymodelmatrix <- function(formula,mf,risksets) {
 
     attr(mt,'factors') <- fact[,keep,drop=FALSE]
     attr(mt,'intercept') <- 0
-    # create model matrix from the constructed terms
-    mat <- t(model.matrix(mt,mf))
 
-# then the factor related stuff
+    # create model matrix from the constructed terms
+    mat <- model.matrix(mt,mf)
+
     # which observations are under risk for this transition?
     if(!is.null(risksets)) {
-      thistr <- levels(df)[t+ztrans]
       riskobs <- sapply(risksets[state], function(r) thistr %in% r)
     } else riskobs <- seq_along(df)
 
+    # remove constant covariates
+    var0 <- apply(mat[riskobs,],2,var) == 0
+    if(any(var0)) {
+      message(sprintf('Covariate %s is constant for transition %s, removing\n',
+                      colnames(mat)[var0], thistr))
+      mat <- mat[,!var0,drop=FALSE]
+    }
+
+
+# then the factor related stuff
+
+    mat <- t(mat)
     faclist <- lapply(colnames(fact), function(term) {
       codes <- fact[,term]
 

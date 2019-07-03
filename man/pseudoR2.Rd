@@ -16,5 +16,5 @@ of the null model.
 
 The ones included here are McFadden's, Adjusted McFadden's, Cox & Snell's, and Nagelkerke, Cragg, and Uhler's.
 
-A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R_2}s.
+A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R^2}s.
 }
