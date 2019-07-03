@@ -241,7 +241,7 @@ mphcrm.control <- function(...) {
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
-               lowint=2,highint=2,
+               lowint=4,highint=4,
                tol=1e-4,
                method='BFGS',
                itfac=20L,

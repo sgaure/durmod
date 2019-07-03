@@ -152,6 +152,28 @@ se <- function(x,tol=.Machine$double.eps) {
   stop("Can't find a matrix to invert")
 }
 
+#' Calculate various pseudo R2's 
+#'
+#' @description
+#' There are several variants of pseudo \eqn{R^2} that can be computed for a likelihood
+#' estimation. They all relate the log likelihood of the estimated model to the log likelihood
+#' of the null model.
+#'
+#' The ones included here are McFadden's, Adjusted McFadden's, Cox & Snell's, and Nagelkerke, Cragg, and Uhler's.
+#' 
+#' A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R_2}s.
+#' @param opt returned value from \code{\link{mphcrm}}.
+#' @export
+pseudoR2 <- function(opt) {
+  nullmod <- opt[['nullmodel']]
+  t(sapply(opt[-length(opt)], function(op) {
+    c(mcfadden=1-op$value/nullmod$value,
+      adjmcfadden=1-(op$value - length(unlist(op$par)))/nullmod$value,
+      coxsnell=1-exp((nullmod$value-op$value)*2/op$nspells),
+      ncu=(1-exp((nullmod$value-op$value)*2/op$nspells))/(1-exp(nullmod$value*2/op$nspells)))
+  }))
+}
+
 #' Prettyprint a time interval
 #' @description
 #' Prints a time in seconds as e.g. \code{"3m4s"}.

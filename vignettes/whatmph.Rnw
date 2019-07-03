@@ -64,7 +64,16 @@ make a transition to a programme, we're already on it.
 Each row of the dataset has a \code{duration}, this is the time until the transition
 marked in \code{d} occurs.
 
-In our dataset, we we have an observation period of 400, and the individuals enter
+The rows of an individual are independent, they can be reordered, but the dataset
+must be sorted on individuals, i.e. the rows for an individual must be together. 
+I suggest using data tables (from the \pkg{data.table} package),
+then it is easy to sort on individuals: \code{setorder(data,id)}.
+If you have factors with hundreds or thousands of levels, it
+can be time-consuming to compute the Fisher-matrix. However, the algorithm which
+creates the Fisher matrix is more efficient if individuals with almost the
+same values for these factors (e.g. county, or company) are close to each other in the dataset.
+
+In our dataset, we have an observation period of 400, and the individuals enter
 the dataset at a random time in this period. When they reach the end of the observation
 period they are no longer observed. That means
 that some individuals do not exit the dataset by doing a transition, but with a \code{d=="none"}.
@@ -257,12 +266,21 @@ the specification \code{timing="none"} can be used. It will use a logit model fo
 transition probabilities.
 
 \subsection{Factors}
-\code{mphcrm} treats factors specially. There is, I think, nothing special to see, but
-internally \code{mphcrm} does not create a large model matrix filled with dummy variables. This means
-that factors with many levels is quite fast to estimate.
+\code{mphcrm} treats factors specially. There is, I hope, nothing special to see, but
+internally \code{mphcrm} does \emph{not} create a large model matrix filled with dummy variables. This means
+that factors with many levels are quite fast to estimate, there is no wasteful multiplication by zero.
 
-\code{mphcrm} removes factor levels as explanatory for a transition if they are not observed
-in any state with a risk for this transition.
+\code{mphcrm} removes factor levels as explanatory for a transition if
+they are not observed in any state with a risk for this transition.
+There can, however, be problems with what the contrasts/references
+should be if you interact a factor in one transition, but keeps it
+uninteracted in another transition. For the purpose of automatic
+removal of reference levels in factors, it is assumed that all terms
+in all transitions are present everywhere. If this problem occurs, you can
+create a copy with a different name, so it looks like different
+factors in different transitions. This may be fixed in a later
+version, if I find a sensible way to do it.
+
 \section{Control parameters}
 There are many control parameters. Rather than scattering more or less arbitrary constants 
 around the program, I have collected them here with their defaults. Some of them you may want to tinker with.
@@ -313,7 +331,7 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{eqtol=0.0001}.} A numeric. It sometimes happens that two location points in the mixed proportional
   hazard distribution turns out to be equal. One of them can then be removed. \code{eqtol} is the
   threshold below which the \(\ell^\infty\) distance between two location points is so small that the
-  two points are thought to be equal. 
+  two points are thought to be equal. Should be lowered if the hazards generally are very small.
 
 \item{\code{maxtime=120}.} A numeric. When searching for a new location point, a global search algorithm 
   from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds. Should be increased if
@@ -329,7 +347,9 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{jobname="mphcrm"}.} A character string. The initial portion of the one-line diagnostic. Useful if you
   e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
   you can see the progress. 
-
+\item{\code{tspec="\%T"}.} A character string. The format of the time stamp in the one-line diagnostic, as described
+  in \code{help(format.POSIXct)}. Use \code{"\%c"} to get both date and time.
+  
 \item{\code{trap.interrupt=interactive().}} A logical. If you decide to interrupt an interactive estimation before
   it has terminated, either because you don't want to wait, or because it seems to have run astray,
   the default behaviour for \code{mphcrm} is to catch the interrupt, and return gracefully with the
@@ -345,7 +365,7 @@ around the program, I have collected them here with their defaults. Some of them
   and details of your computing contraption. If memory use is an issue with a large number of coefficients
   to estimate, it can be lowered, typically to some other power of two.
 
-\item{\code{lowint=2}.} A numeric, possibly a vector of length the
+\item{\code{lowint=4}.} A numeric, possibly a vector of length the
   number of transitions.  When searching for the location of a new
   point, an interval centered at the mean of the old points is
   used. \code{lowint} is how far from the mean (in log units) the
@@ -353,11 +373,12 @@ around the program, I have collected them here with their defaults. Some of them
   analyzing where the location points may lie, as described in
   \cite{lindsay83II}, but does a brute force search in a
   (hyper)rectangle. Setting this parameter too high, increases the
-  risk of finding numerically unfavourable points, but if
-  \code{mphrcm} repeatedly complains about not being able to find new
-  points, it can be increased. See also \code{maxtime}.
+  risk of finding numerically unfavourable points, in particular large
+  ones (if \code{highint} is too large), but if \code{mphrcm}
+  repeatedly complains about not being able to find new points, it can
+  be increased. See also \code{maxtime}.
 
-\item{\code{highint=2}.} A numeric. Like \code{lowint}, but to the right.
+\item{\code{highint=4}.} A numeric. Like \code{lowint}, but to the right.
 
 \item{\code{method="BFGS"}.} A character string. The default is the
   most robust method. In case of convergence problems, or for fun, one
