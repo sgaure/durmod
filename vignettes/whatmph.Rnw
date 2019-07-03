@@ -131,8 +131,9 @@ and the vectors \(\mu_j\) for \(j=1..n\).
 \section{Estimation}
 The estimation proceeds as follows. We start with \(n=1\), estimate
 the \(\beta\)s and the two \(\mu\)s.  Then we increase \(n\) to 2, let
-\(p_2\) be a small probability, and find a vector \(\mu_2\) which
-increases the likelihood.  This is used as starting point for a new likelihood maximization.
+\(p_2 = 0\), and find a vector \(\mu_2\) such that the derivative of the
+log-likelihood in the direction of positive \(p_2\) is positive.
+This is used as starting point for a new likelihood maximization.
 Then \(n\) is increased to \(3\), and we proceed in this fashion, adding masspoints to the
 distribution until we are no longer able to increase the likelihood.
 
@@ -318,17 +319,28 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must change with
   to be considered an improvement.
 
-\item{\code{newprob=0.0001}.} A numeric. When searching for a new masspoint, a new support point is added to
-  the distribution with a small probability, then a search is done for a location for this probability 
-  which increases the likelihood. \code{newprob} is this small probability. 
-  If the search fails, the new probability is set to zero, and a search for a positive directional
-  derivative of the likelihood (in the direction of positive probability) is done.  The reason
-  we don't search for the derivative directly is that it tends to find unfavourable points, typically
-  duplicates of other points which happen to have a positive derivative due to numerical inaccuracy.
+\item{\code{gdiff=TRUE}.} A logical. When searching for a new point, should we try one with
+  zero probability, and positive derivative in the direction of positive probability? This usually
+  works, but in case of problems with finding new points, it can be set to \code{FALSE}, and a
+  search for a location with a small probability is done instead. See \code{newprob}.
+\item{\code{startprob=0.0001}.} A numeric. When a location point has been found with zero probability,
+  we can not use a zero probability for further optimization due to our parametrization of probabilities
+  which do not allow it. We must set it to some small value \code{startprob}. Setting it too small
+  will make it difficult to move away from it.
+  
+\item{\code{newprob=0.0001}.} A numeric. When searching for a new
+  masspoint with \code{gdiff=FALSE}, a new support point is added to
+  the distribution with a small probability, then a search is done for
+  a location for this probability which increases the
+  likelihood. \code{newprob} is this small probability.  If the search
+  fails, the new probability is set to zero, and a search for a
+  positive directional derivative of the likelihood (in the direction
+  of positive probability) is done.  
 
   If \code{mphcrm} after optimization seems to find a series of points with probability equal to
   \code{newprob}, it has perhaps got stuck for numerical reasons. Try to increase it to find higher
   probability points first.
+
 \item{\code{minprob=1e-20}.} A numeric. Masspoints with probability below this are removed. 
 
 \item{\code{eqtol=0.0001}.} A numeric. It sometimes happens that two location points in the mixed proportional

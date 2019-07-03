@@ -239,6 +239,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 mphcrm.control <- function(...) {
   ctrl <- list(iters=25,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
                method='BFGS', gdiff=TRUE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
+               startprob=1e-4,
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
@@ -455,7 +456,7 @@ optprobs <- function(dataset,pset,control) {
 
   # go all the way with the relative tolerance, we need to get out of bad places.
   aopt <- optim(pset$pargs,pfun,gpfun,method='BFGS',
-                control=list(trace=0,REPORT=1,maxit=max(100,10*(length(probpos))), reltol=1e-14))
+                control=list(trace=0,REPORT=1,maxit=max(200,10*(length(probpos))), reltol=1e-14))
 #  message('probs:',sprintf(' %.7f',a2p(aopt$par)), ' value: ',aopt$value)
   pset$pargs[] <- aopt$par
   control$callback('prob',aopt,dataset,control)
@@ -477,7 +478,7 @@ optdist <- function(dataset,pset,control) {
   }
 
   dopt <- optim(val[distpos],dfun,gdfun,method='BFGS',
-                control=list(trace=0,REPORT=1,maxit=max(100,10*length(distpos)), reltol=1e-14))
+                control=list(trace=0,REPORT=1,maxit=max(200,10*length(distpos)), reltol=1e-14))
   val[distpos] <- dopt$par
   dopt$par <- unflatten(val)
   control$callback('dist',dopt,dataset,control)
@@ -513,14 +514,14 @@ newpoint <- function(dataset,pset,value,control) {
                                     maxtime=control$newpoint.maxtime,
                                     maxeval=10000*length(args),population=20*length(args)))
 
-  if(!gdiff && !(muopt$status %in% c(0,2))) {
+  if(!(muopt$status %in% c(0,2))) {
     muopt$convergence <- muopt$status
     muopt$value <- muopt$objective 
     control$callback('newpoint',muopt,dataset,control)
-    # that one failed, try gdiff instead, broader interval
+    # that one failed, try broader interval
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
-    muopt <- nloptr::nloptr(args, fun, lb=low-2, ub=high+2,gdiff=TRUE,
+    muopt <- nloptr::nloptr(args, fun, lb=low-4, ub=high+4,gdiff=TRUE,
                             opts=list(algorithm='NLOPT_GN_ISRES',stopval=-control$ll.improve,
                                       xtol_rel=0, xtol_abs=0,
                                       maxtime=control$newpoint.maxtime,
@@ -534,8 +535,8 @@ newpoint <- function(dataset,pset,value,control) {
     newset$parset[[i]]$mu[np] <- muopt$solution[i]
   }
   if(gdiff) {
-    #  newpr <- newpr/sum(newpr)
-    newset$pargs[] = p2a(c((1-1e-4)*pr,1e-4))
+    # set a tiny probability to start with, 0 can't be used, the parameter is then -Inf
+    newset$pargs[] = p2a(c((1-control$startprob)*pr,control$startprob))
   }
   optprobs(dataset,newset,control)
 }
@@ -868,7 +869,7 @@ mymodelmatrix <- function(formula,mf,risksets) {
     # remove constant covariates
     var0 <- apply(mat[riskobs,,drop=FALSE],2,var) == 0
     if(any(var0)) {
-      message(sprintf('*** &@%%#! *** Covariate %s is constant for transition %s, removing\n',
+      message(sprintf('*** Covariate %s is constant for transition %s, removing\n',
                       colnames(mat)[var0], thistr))
       mat <- mat[,!var0,drop=FALSE]
     }
@@ -888,6 +889,12 @@ mymodelmatrix <- function(formula,mf,risksets) {
       # interact all the factors in the term
       # but some are with contrasts, some are not. The code is 2 if no contrast, 1 otherwise
       # make a list of the factors
+      # Here's the interaction with a covariate.
+      x <- NULL
+      if(any(!isfac))
+        x <- as.matrix(Reduce('*',eval(as.call(lapply(c('list',contains[!isfac]),as.name)),
+                                       mf,environment(formula))))
+      if(is.null(x)) x <- numeric(0)
 
       codes <- codes[contains[isfac]]
       flist <- eval(as.call(lapply(c('list',contains[isfac]),as.name)), mf,environment(formula))
@@ -899,17 +906,24 @@ mymodelmatrix <- function(formula,mf,risksets) {
         factor(f,exclude=levels(factor(f[riskobs]))[1])
       }, flist, codes==2, SIMPLIFY=FALSE)
 
-      # we also remove interaction levels which are never observed in a state
-      # which can make this transition
+      # interact them
       iaf <- Reduce(`:`, fl)
-      iaf <- factor(iaf,levels=levels(factor(iaf[riskobs])))
-      if(any(!isfac)) {
-        attr(iaf,'x') <- as.matrix(Reduce('*',eval(as.call(lapply(c('list',contains[!isfac]),as.name)),
-                                                   mf,environment(formula))))
-      } else {
-        attr(iaf,'x') <- numeric(0)
+      # we then remove interaction levels which are never observed/constant in a state
+      # which can make this transition
+      f <- factor(iaf[riskobs])
+      xx <- if(length(x)) x[riskobs] else 1
+      flev <- levels(f)
+      if(length(flev) == 0) {
+        message(sprintf("*** Removing factor %s from transition %s, no variation\n",term,thistr))
+        return(NULL) #no more levels, discard entire factor
       }
-      iaf
+      val <- numeric(length(f))
+      excl <- flev[sapply(flev, function(ll) {val[f==ll] <- if(length(xx)>1) xx[f==ll] else 1; var(val) == 0})]
+      if(length(excl)) 
+        message(sprintf("*** Removing level %s from factor %s in transition %s, no variation\n",excl,term,thistr))
+      iaf <- factor(iaf,levels=flev,exclude=excl)
+#      iaf <- factor(iaf,levels=levels(factor(iaf[riskobs])))
+      structure(iaf,x=x)
     })
 
     names(faclist) <- colnames(fact)
