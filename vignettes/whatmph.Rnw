@@ -225,6 +225,8 @@ round(mphdist(fit[[1]]),6)
 mphmoments(fit[[1]])
 # and covariance matrix
 mphcov(fit[[1]])
+# and some pseudo R2
+pseudoR2(fit)
 @ 
 The true values used to generate the dataset was 
 \code{job.x1=1}, \code{job.x2=-1}, \code{job.alpha=0.2}, \code{program.x1=1}, and
@@ -393,7 +395,7 @@ around the program, I have collected them here with their defaults. Some of them
   repeatedly complains about not being able to find new points, it can
   be increased. See also \code{maxtime}.
 
-\item{\code{highint=4}.} A numeric. Like \code{lowint}, but to the right.
+\item{\code{highint=2}.} A numeric. Like \code{lowint}, but to the right.
 
 \item{\code{method="BFGS"}.} A character string. The default is the
   most robust method. In case of convergence problems, or for fun, one

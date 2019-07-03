@@ -243,7 +243,7 @@ mphcrm.control <- function(...) {
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
-               lowint=4,highint=4,
+               lowint=4,highint=2,
                tol=1e-4,
                method='BFGS',
                itfac=20L,
@@ -521,7 +521,7 @@ newpoint <- function(dataset,pset,value,control) {
     # that one failed, try broader interval
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
-    muopt <- nloptr::nloptr(args, fun, lb=low-4, ub=high+4,gdiff=TRUE,
+    muopt <- nloptr::nloptr(args, fun, lb=low-control$lowint, ub=high+control$highint,gdiff=TRUE,
                             opts=list(algorithm='NLOPT_GN_ISRES',stopval=-control$ll.improve,
                                       xtol_rel=0, xtol_abs=0,
                                       maxtime=control$newpoint.maxtime,
