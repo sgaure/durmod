@@ -238,7 +238,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=25,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=5e-3, jobname='mphcrm', 
+               method='BFGS', gdiff=TRUE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
@@ -313,7 +313,7 @@ mphcrm.callback <- local({
       print(list(...)[['eqpoints']])
     } else {
       if(is.numeric(opt$convergence) && opt$convergence != 0) {
-        if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2))) {
+        if(fromwhere != 'newpoint' || !(opt$convergence %in% c(2,5))) {
           mess <- if(is.null(opt$message)) '' else opt$message
           cat(sprintf('%s %s %s: convergence failure %.4f, %d %s\n',
                       jobname, format(now,control$tspec), fromwhere,
@@ -455,7 +455,7 @@ optprobs <- function(dataset,pset,control) {
 
   # go all the way with the relative tolerance, we need to get out of bad places.
   aopt <- optim(pset$pargs,pfun,gpfun,method='BFGS',
-                control=list(trace=0,REPORT=1,maxit=10*length(probpos), reltol=1e-14))
+                control=list(trace=0,REPORT=1,maxit=max(100,10*(length(probpos))), reltol=1e-14))
 #  message('probs:',sprintf(' %.7f',a2p(aopt$par)), ' value: ',aopt$value)
   pset$pargs[] <- aopt$par
   control$callback('prob',aopt,dataset,control)
@@ -477,7 +477,7 @@ optdist <- function(dataset,pset,control) {
   }
 
   dopt <- optim(val[distpos],dfun,gdfun,method='BFGS',
-                control=list(trace=0,REPORT=1,maxit=10*length(distpos), reltol=1e-14))
+                control=list(trace=0,REPORT=1,maxit=max(100,10*length(distpos)), reltol=1e-14))
   val[distpos] <- dopt$par
   dopt$par <- unflatten(val)
   control$callback('dist',dopt,dataset,control)
@@ -640,7 +640,7 @@ addpoint <- function(dataset,pset,value,control) {
   # optimize probabilities
   newset <- pset
   control$minprob <- 0
-  for(i in 1:5) {
+  for(i in 1:2) {
     newset <- newpoint(dataset,newset,value,control)
     newset <- optdist(dataset,newset,control)
     newset <- badpoints(newset,control)

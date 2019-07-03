@@ -318,7 +318,7 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must change with
   to be considered an improvement.
 
-\item{\code{newprob=0.005}.} A numeric. When searching for a new masspoint, a new support point is added to
+\item{\code{newprob=0.0001}.} A numeric. When searching for a new masspoint, a new support point is added to
   the distribution with a small probability, then a search is done for a location for this probability 
   which increases the likelihood. \code{newprob} is this small probability. 
   If the search fails, the new probability is set to zero, and a search for a positive directional
