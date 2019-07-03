@@ -855,18 +855,18 @@ mymodelmatrix <- function(formula,mf,risksets) {
     } else riskobs <- seq_along(df)
 
     # remove constant covariates
-    var0 <- apply(mat[riskobs,],2,var) == 0
+    var0 <- apply(mat[riskobs,,drop=FALSE],2,var) == 0
     if(any(var0)) {
-      message(sprintf('Covariate %s is constant for transition %s, removing\n',
+      message(sprintf('*** &@%%¤! *** Covariate %s is constant for transition %s, removing\n',
                       colnames(mat)[var0], thistr))
       mat <- mat[,!var0,drop=FALSE]
     }
 
-
+    mat <- t(mat)
+    
 # then the factor related stuff
 
-    mat <- t(mat)
-    faclist <- lapply(colnames(fact), function(term) {
+   faclist <- lapply(colnames(fact), function(term) {
       codes <- fact[,term]
 
       contains <- rownames(fact)[codes > 0]
@@ -881,7 +881,7 @@ mymodelmatrix <- function(formula,mf,risksets) {
       codes <- codes[contains[isfac]]
       flist <- eval(as.call(lapply(c('list',contains[isfac]),as.name)), mf,environment(formula))
 
-      # remove a reference level if contrasts, set it to NA
+      # remove a reference level if contrasts
       fl <- mapply(function(f,useall) {
         if(useall) return(f)
         # reference is the first level that is observed
