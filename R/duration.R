@@ -204,14 +204,14 @@ mphcrm <- function(formula,data,risksets=NULL,
 #'
 #' @description
 #' Modify the default estimation parameters for
-#'   \code{\link{mphcrm}}
+#'   \code{\link{mphcrm}}.
 #' @param ...
 #' parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
 #' \itemize{
-#' \item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
+#' \item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}.
 #' \item iters. integer. How many iterations should we maximally run. Defaults to 12.
-#' \item ll.improve. numeric. How much must the be log-likelihood improve from the last iteration before
-#'   termination. Defaults to 0.001
+#' \item ll.improve. numeric. How much must the log-likelihood improve from the last iteration before
+#'   termination. Defaults to 0.001.
 #' \item newpoint.maxtime. numeric. For how many seconds should a global search for a new point
 #'   improving the likelihood be conducted before we continue with the best we have found. Defaults to
 #'   120.
@@ -228,16 +228,17 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' \item cluster. Cluster specification from package \pkg{parallel} or \pkg{snow}.
 #' }
 #' @note
-#' There are more parameters documented in a vignette. Instead of cluttering
+#' There are more parameters documented in the \code{vignette("whatmph")}. Some of them
+#' can be useful. Instead of cluttering
 #' the source code with constants and stuff required by various optimization routines, they
 #' have been put in this control list. 
 #' @return
-#' list of control parameters suitable for the \code{control}
+#' List of control parameters suitable for the \code{control}
 #'   argument of \code{\link{mphcrm}}.
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=25,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
-               method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=1e-3, jobname='mphcrm', 
+               method='BFGS', gdiff=FALSE, minprob=1e-20, eqtol=1e-4, newprob=5e-3, jobname='mphcrm', 
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
                tspec='%T', newpoint.maxtime=120,
@@ -440,12 +441,21 @@ rescale <- function(dataset, opt) {
 }
 
 optprobs <- function(dataset,pset,control) {
+  val <- flatten(pset)
+  probpos <- grep('^pargs[0-9]*$',names(val))
+  
   pfun <- function(a) {
     pset$pargs[] <- a
     -mphloglik(dataset,pset,control=control)
   }
-#  message('optimize probs')
-  aopt <- optim(pset$pargs,pfun,method='BFGS',control=list(trace=0,REPORT=1,factr=10))
+  gpfun <- function(a) {
+    val[probpos] <- a
+    -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, control=control),'gradient')[probpos]
+  }
+
+  # go all the way with the relative tolerance, we need to get out of bad places.
+  aopt <- optim(pset$pargs,pfun,gpfun,method='BFGS',
+                control=list(trace=0,REPORT=1,maxit=10*length(probpos), reltol=1e-14))
 #  message('probs:',sprintf(' %.7f',a2p(aopt$par)), ' value: ',aopt$value)
   pset$pargs[] <- aopt$par
   control$callback('prob',aopt,dataset,control)
@@ -466,7 +476,8 @@ optdist <- function(dataset,pset,control) {
     -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, control=control),'gradient')[distpos]
   }
 
-  dopt <- optim(val[distpos],dfun,gdfun,method='BFGS',control=list(trace=0,REPORT=100))
+  dopt <- optim(val[distpos],dfun,gdfun,method='BFGS',
+                control=list(trace=0,REPORT=1,maxit=10*length(distpos), reltol=1e-14))
   val[distpos] <- dopt$par
   dopt$par <- unflatten(val)
   control$callback('dist',dopt,dataset,control)
@@ -524,7 +535,7 @@ newpoint <- function(dataset,pset,value,control) {
   }
   if(gdiff) {
     #  newpr <- newpr/sum(newpr)
-    newset$pargs[] = p2a(c((1-1e-5)*pr,1e-5))
+    newset$pargs[] = p2a(c((1-1e-4)*pr,1e-4))
   }
   optprobs(dataset,newset,control)
 }
@@ -710,15 +721,15 @@ ml <- function(dataset,pset,control) {
 #' p
 #' # convert back
 #' p2a(p)
-#' 
+#' @return \code{a2p} returns a vector probabilities with sum 1.
 #' @export
 a2p <- function(a) {b <- c(0,a); p <- exp(b)/sum(exp(b)); ifelse(is.na(p),1,p)}
-##' @export
-#a2logp <- function(a) {b <- c(0,a); logp <- b - logsumofexp(b,0); ifelse(is.na(logp),0,logp)}
 
 #' @rdname a2p
 #' @param p
 #' a vector of probabilities with sum(p) = 1
+#' @return
+#' \code{p2a} returns a vector of parameters.
 #' @export
 p2a <- function(p) log(p/p[1])[-1]
 
@@ -857,7 +868,7 @@ mymodelmatrix <- function(formula,mf,risksets) {
     # remove constant covariates
     var0 <- apply(mat[riskobs,,drop=FALSE],2,var) == 0
     if(any(var0)) {
-      message(sprintf('*** &@%%¤! *** Covariate %s is constant for transition %s, removing\n',
+      message(sprintf('*** &@%%#! *** Covariate %s is constant for transition %s, removing\n',
                       colnames(mat)[var0], thistr))
       mat <- mat[,!var0,drop=FALSE]
     }

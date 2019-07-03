@@ -12,6 +12,9 @@ from \code{\link{mphcrm}}.}
 
 \item{tol}{tolerance for \link{geninv}}
 }
+\value{
+A named vector of standard errors is returned.
+}
 \description{
 Extract standard errors of the estimated parameters
 }

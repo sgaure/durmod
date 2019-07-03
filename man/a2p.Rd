@@ -14,6 +14,11 @@ p2a(p)
 
 \item{p}{a vector of probabilities with sum(p) = 1}
 }
+\value{
+\code{a2p} returns a vector probabilities with sum 1.
+
+\code{p2a} returns a vector of parameters.
+}
 \description{
 \code{\link{mphcrm}} parametrizes the probabilities that it optimizes.
 For \eqn{n+1} probabilities there are \eqn{n} parameters \eqn{a_j}, such that
@@ -28,5 +33,4 @@ p <- a2p(a)
 p
 # convert back
 p2a(p)
-
 }

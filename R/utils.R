@@ -10,6 +10,7 @@
 #' # make it singular
 #' x[,2] <- x[,3]+x[,5]
 #' geninv(x)
+#' @return A matrix of the same dimension as \code{X} is returned, the Moore-Penrose generalized inverse.
 #' @export
 geninv <- function(X, tol=.Machine$double.eps) {
   if (length(dim(X)) > 2L || !is.numeric(X)) 
@@ -145,6 +146,7 @@ mphcov.log <- function(pset) {
 #' The Fisher matrix, typically from \code{opt[[1]]$fisher}, where \code{opt} is returned
 #' from \code{\link{mphcrm}}.
 #' @param tol tolerance for \link{geninv}
+#' @return A named vector of standard errors is returned.
 #' @export
 se <- function(x,tol=.Machine$double.eps) {
   if(is.matrix(x)) return(sqrt(diag(geninv(x,tol))))
@@ -161,8 +163,9 @@ se <- function(x,tol=.Machine$double.eps) {
 #'
 #' The ones included here are McFadden's, Adjusted McFadden's, Cox & Snell's, and Nagelkerke, Cragg, and Uhler's.
 #' 
-#' A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R^2}s.
 #' @param opt returned value from \code{\link{mphcrm}}.
+#' @return
+#' A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R^2}s.
 #' @export
 pseudoR2 <- function(opt) {
   nullmod <- opt[['nullmodel']]
@@ -176,9 +179,10 @@ pseudoR2 <- function(opt) {
 
 #' Prettyprint a time interval
 #' @description
-#' Prints a time in seconds as e.g. \code{"3m4s"}.
+#' Converts a time in seconds to a short string e.g. \code{"3m4s"}.
 #' @param t
 #' numeric. time in seconds.
+#' @return A character string is returned.
 #' @examples
 #' timestr(1.3)
 #' timestr(73)

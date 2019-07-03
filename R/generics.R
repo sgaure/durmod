@@ -165,16 +165,19 @@ logLik.mphcrm.opt <- function(object, ..., useobs=FALSE) {
 }
 
 #' @method logLik mphcrm.list
-#' @export
+##' @export
 logLik.mphcrm.list <- function(object,..., useobs=FALSE) {
   logLik(object[[1L]],...,useobs)
 }
 
 #' @method coef mphcrm.pset
-coef.mphcrm.pset <- function(object,...)  flatten(object)
+##' @export
+coef.mphcrm.pset <- function(object,...)  structure(flatten(object),skeleton=NULL)
 
 #' @method coef mphcrm.opt
+##' @export
 coef.mphcrm.opt <- function(object,...) coef(object$par)
 
 #' @method vcov mphcrm.opt
+##' @export
 vcov.mphcrm.opt <- function(object,...)  geninv(object$fisher)

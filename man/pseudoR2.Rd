@@ -9,12 +9,13 @@ pseudoR2(opt)
 \arguments{
 \item{opt}{returned value from \code{\link{mphcrm}}.}
 }
+\value{
+A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R^2}s.
+}
 \description{
 There are several variants of pseudo \eqn{R^2} that can be computed for a likelihood
 estimation. They all relate the log likelihood of the estimated model to the log likelihood
 of the null model.
 
 The ones included here are McFadden's, Adjusted McFadden's, Cox & Snell's, and Nagelkerke, Cragg, and Uhler's.
-
-A matrix is returned, with one row for each iteration containing the various pseudo \eqn{R^2}s.
 }

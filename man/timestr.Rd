@@ -9,8 +9,11 @@ timestr(t)
 \arguments{
 \item{t}{numeric. time in seconds.}
 }
+\value{
+A character string is returned.
+}
 \description{
-Prints a time in seconds as e.g. \code{"3m4s"}.
+Converts a time in seconds to a short string e.g. \code{"3m4s"}.
 }
 \examples{
 timestr(1.3)

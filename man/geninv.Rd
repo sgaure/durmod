@@ -11,6 +11,9 @@ geninv(X, tol = .Machine$double.eps)
 
 \item{tol}{tolerance for determining bad entries}
 }
+\value{
+A matrix of the same dimension as \code{X} is returned, the Moore-Penrose generalized inverse.
+}
 \description{
 Moore-Penrose generalized inverse
 }

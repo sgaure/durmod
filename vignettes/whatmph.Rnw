@@ -318,7 +318,7 @@ around the program, I have collected them here with their defaults. Some of them
 \item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must change with
   to be considered an improvement.
 
-\item{\code{newprob=0.001}.} A numeric. When searching for a new masspoint, a new support point is added to
+\item{\code{newprob=0.005}.} A numeric. When searching for a new masspoint, a new support point is added to
   the distribution with a small probability, then a search is done for a location for this probability 
   which increases the likelihood. \code{newprob} is this small probability. 
   If the search fails, the new probability is set to zero, and a search for a positive directional
@@ -326,6 +326,9 @@ around the program, I have collected them here with their defaults. Some of them
   we don't search for the derivative directly is that it tends to find unfavourable points, typically
   duplicates of other points which happen to have a positive derivative due to numerical inaccuracy.
 
+  If \code{mphcrm} after optimization seems to find a series of points with probability equal to
+  \code{newprob}, it has perhaps got stuck for numerical reasons. Try to increase it to find higher
+  probability points first.
 \item{\code{minprob=1e-20}.} A numeric. Masspoints with probability below this are removed. 
 
 \item{\code{eqtol=0.0001}.} A numeric. It sometimes happens that two location points in the mixed proportional

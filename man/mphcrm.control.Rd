@@ -9,10 +9,10 @@ mphcrm.control(...)
 \arguments{
 \item{...}{parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
 \itemize{
-\item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}
+\item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}.
 \item iters. integer. How many iterations should we maximally run. Defaults to 12.
-\item ll.improve. numeric. How much must the be log-likelihood improve from the last iteration before
-  termination. Defaults to 0.001
+\item ll.improve. numeric. How much must the log-likelihood improve from the last iteration before
+  termination. Defaults to 0.001.
 \item newpoint.maxtime. numeric. For how many seconds should a global search for a new point
   improving the likelihood be conducted before we continue with the best we have found. Defaults to
   120.
@@ -30,15 +30,16 @@ In this case the program will continue. Defaults to \code{interactive()}.
 }}
 }
 \value{
-list of control parameters suitable for the \code{control}
+List of control parameters suitable for the \code{control}
   argument of \code{\link{mphcrm}}.
 }
 \description{
 Modify the default estimation parameters for
-  \code{\link{mphcrm}}
+  \code{\link{mphcrm}}.
 }
 \note{
-There are more parameters documented in a vignette. Instead of cluttering
+There are more parameters documented in the \code{vignette("whatmph")}. Some of them
+can be useful. Instead of cluttering
 the source code with constants and stuff required by various optimization routines, they
 have been put in this control list.
 }

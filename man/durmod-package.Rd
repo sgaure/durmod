@@ -4,7 +4,7 @@
 \name{durmod-package}
 \alias{durmod-package}
 \alias{durmod}
-\title{A package for estimating a mixed proportional hazard competing risk model.}
+\title{A package for estimating a mixed proportional hazard competing risk model with the NPMLE.}
 \description{
 The main method of the package is \code{\link{mphcrm}}. It has an interface
 somewhat similar to \code{\link{lm}}.  There is an example of use in \code{\link{datagen}}, with
