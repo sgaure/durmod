@@ -509,7 +509,7 @@ newpoint <- function(dataset,pset,value,control) {
   args <- runif(length(low),0,1)*(high-low) + low
   muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',
-                                    stopval=if(gdiff) -control$ll.improve else -value-control$ll.improve,
+                                    stopval=if(gdiff) -1e-8 else -value-control$ll.improve,
                                     xtol_rel=0, xtol_abs=0,
                                     maxtime=control$newpoint.maxtime,
                                     maxeval=10000*length(args),population=20*length(args)))
@@ -521,8 +521,8 @@ newpoint <- function(dataset,pset,value,control) {
     # that one failed, try broader interval
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
-    muopt <- nloptr::nloptr(args, fun, lb=low-control$lowint, ub=high+control$highint,gdiff=TRUE,
-                            opts=list(algorithm='NLOPT_GN_ISRES',stopval=-control$ll.improve,
+    muopt <- nloptr::nloptr(muopt$solution, fun, lb=low-control$lowint, ub=high+control$highint,gdiff=TRUE,
+                            opts=list(algorithm='NLOPT_GN_ISRES',stopval=-1e-8,
                                       xtol_rel=0, xtol_abs=0,
                                       maxtime=control$newpoint.maxtime,
                                       maxeval=10000*length(args),population=20*length(args)))

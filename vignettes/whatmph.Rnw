@@ -284,6 +284,9 @@ create a copy with a different name, so it looks like different
 factors in different transitions. This may be fixed in a later
 version, if I find a sensible way to do it.
 
+<<echo=FALSE>>=
+def <- mphcrm.control()
+@ 
 \section{Control parameters}
 There are many control parameters. Rather than scattering more or less arbitrary constants 
 around the program, I have collected them here with their defaults. Some of them you may want to tinker with.
@@ -312,25 +315,25 @@ around the program, I have collected them here with their defaults. Some of them
   with a highly optimized and parallel BLAS, like mkl from Intel. See the R documentation for how
   to do this.
 
-\item{\code{iters=25}.} An integer. The number of iterations to perform. The estimation may stop earlier, if
+\item{\code{iters=\Sexpr{def$iters}}.} An integer. The number of iterations to perform. The estimation may stop earlier, if
   neither the log likelihood \emph{nor} the entropy improves. 
 
-\item{\code{ll.improve=0.001}.} A numeric. The amount the log-likelihood must increase with to be considered an
+\item{\code{ll.improve=\Sexpr{def$ll.improve}}.} A numeric. The amount the log-likelihood must increase with to be considered an
   improvement. 
 
-\item{\code{e.improve=0.001}.} A numeric. The amount the entropy of the hazard distribution must change with
+\item{\code{e.improve=\Sexpr{def$e.improve}}.} A numeric. The amount the entropy of the hazard distribution must change with
   to be considered an improvement.
 
-\item{\code{gdiff=TRUE}.} A logical. When searching for a new point, should we try one with
+\item{\code{gdiff=\Sexpr{def$gdiff}}.} A logical. When searching for a new point, should we try one with
   zero probability, and positive derivative in the direction of positive probability? This usually
   works, but in case of problems with finding new points, it can be set to \code{FALSE}, and a
   search for a location with a small probability is done instead. See \code{newprob}.
-\item{\code{startprob=0.0001}.} A numeric. When a location point has been found with zero probability,
+\item{\code{startprob=\Sexpr{def$startprob}}.} A numeric. When a location point has been found with zero probability,
   we can not use a zero probability for further optimization due to our parametrization of probabilities
   which do not allow it. We must set it to some small value \code{startprob}. Setting it too small
   will make it difficult to move away from it.
   
-\item{\code{newprob=0.0001}.} A numeric. When searching for a new
+\item{\code{newprob=\Sexpr{def$newprob}}.} A numeric. When searching for a new
   masspoint with \code{gdiff=FALSE}, a new support point is added to
   the distribution with a small probability, then a search is done for
   a location for this probability which increases the
@@ -343,25 +346,27 @@ around the program, I have collected them here with their defaults. Some of them
   \code{newprob}, it has perhaps got stuck for numerical reasons. Try to increase it to find higher
   probability points first.
 
-\item{\code{minprob=1e-20}.} A numeric. Masspoints with probability below this are removed. 
+\item{\code{minprob=\Sexpr{def$minprob}}.} A numeric. Masspoints with probability below this are removed. 
 
-\item{\code{eqtol=0.0001}.} A numeric. It sometimes happens that two location points in the mixed proportional
+\item{\code{eqtol=\Sexpr{def$eqtol}}.} A numeric. It sometimes happens that two location points in the mixed proportional
   hazard distribution turns out to be equal. One of them can then be removed. \code{eqtol} is the
   threshold below which the \(\ell^\infty\) distance between two location points is so small that the
   two points are thought to be equal. Should be lowered if the hazards generally are very small.
 
-\item{\code{maxtime=120}.} A numeric. When searching for a new location point, a global search algorithm 
-  from package \pkg{nloptr} is used. \code{maxtime} is its time limit in seconds. Should be increased if
-  \code{mphcrm} repeatedly complains about not being able to find a new point. However, when
-  there are no new points to be found at the end of the estimation, this will necessarily happen. 
-  See also \code{lowint}.
+\item{\code{newpoint.maxtime=\Sexpr{def$newpoint.maxtime}}.} A numeric. When
+  searching for a new location point, a global search algorithm from
+  package \pkg{nloptr} is used. \code{maxtime} is its time limit in
+  seconds. Should be increased if \code{mphcrm} repeatedly complains
+  about not being able to find a new point. However, when there are no
+  new points to be found at the end of the estimation, this will
+  necessarily happen.  See also \code{lowint}.
 
 \item{\code{callback=mphcrm.callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
   it is possible to write your own. It will replace the default callback (which you can call from your function).
   In this way you can e.g. get diagnostics on particular coefficients, save intermediate results
   to file, or other partakings. See \code{mphcrm.callback}.
 
-\item{\code{jobname="mphcrm"}.} A character string. The initial portion of the one-line diagnostic. Useful if you
+\item{\code{jobname=\Sexpr{def$jobname}}.} A character string. The initial portion of the one-line diagnostic. Useful if you
   e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
   you can see the progress. 
 \item{\code{tspec="\%T"}.} A character string. The format of the time stamp in the one-line diagnostic, as described
@@ -372,17 +377,17 @@ around the program, I have collected them here with their defaults. Some of them
   the default behaviour for \code{mphcrm} is to catch the interrupt, and return gracefully with the
   result of the estimation so far. This behaviour can be switched off with \code{trap.interrupt=FALSE}.
 
-\item{\code{tol=0.0001}.} A numeric. The (absolute) tolerance for the log-likelihood maximization.
+\item{\code{tol=\Sexpr{def$tol}}.} A numeric. The (absolute) tolerance for the log-likelihood maximization.
 
-\item{\code{itfac=20}.} An integer. The maximum number of iterations in the BFGS-method is \code{itfac*K}, where
+\item{\code{itfac=\Sexpr{def$itfac}}.} An integer. The maximum number of iterations in the BFGS-method is \code{itfac*K}, where
   \code{K} is the number of parameters to estimate.
 
-\item{\code{fishblock=128}.} An integer. The Fisher matrix is created by calling the BLAS \code{dsyrk} with
+\item{\code{fishblock=\Sexpr{def$fishblock}}.} An integer. The Fisher matrix is created by calling the BLAS \code{dsyrk} with
   blocks of individual gradients. This is the size of the blocks. The optimal size depends on the BLAS version
   and details of your computing contraption. If memory use is an issue with a large number of coefficients
   to estimate, it can be lowered, typically to some other power of two.
 
-\item{\code{lowint=4}.} A numeric, possibly a vector of length the
+\item{\code{lowint=\Sexpr{def$lowint}}.} A numeric, possibly a vector of length the
   number of transitions.  When searching for the location of a new
   point, an interval centered at the mean of the old points is
   used. \code{lowint} is how far from the mean (in log units) the
@@ -395,9 +400,9 @@ around the program, I have collected them here with their defaults. Some of them
   repeatedly complains about not being able to find new points, it can
   be increased. See also \code{maxtime}.
 
-\item{\code{highint=2}.} A numeric. Like \code{lowint}, but to the right.
+\item{\code{highint=\Sexpr{def$highint}}.} A numeric. Like \code{lowint}, but to the right.
 
-\item{\code{method="BFGS"}.} A character string. The default is the
+\item{\code{method="\Sexpr{def$method}"}.} A character string. The default is the
   most robust method. In case of convergence problems, or for fun, one
   may try one of the local gradient based NLOPT-methods:
   \code{"TNEWTON\_PRECOND", "TNEWTON", "SLSQP", "MMA",
