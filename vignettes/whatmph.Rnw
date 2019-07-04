@@ -401,7 +401,7 @@ around the program, I have collected them here with their defaults. Some of them
   risk of finding numerically unfavourable points, in particular large
   ones (if \code{highint} is too large), but if \code{mphrcm}
   repeatedly complains about not being able to find new points, it can
-  be increased. See also \code{maxtime}.
+  be increased. See also \code{newpoint.maxtime}.
 
 \item{\code{highint=\Sexpr{def$highint}}.} A numeric. Like \code{lowint}, but to the right.
 
