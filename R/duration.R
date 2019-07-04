@@ -237,8 +237,9 @@ mphcrm <- function(formula,data,risksets=NULL,
 #'   argument of \code{\link{mphcrm}}.
 #' @export
 mphcrm.control <- function(...) {
-  ctrl <- list(iters=25,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
+  ctrl <- list(iters=50,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
                method='BFGS', gdiff=TRUE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
+               overshoot=0.001,
                startprob=1e-4,
                ll.improve=1e-3, e.improve=1e-3,
                trap.interrupt=interactive(),
@@ -509,9 +510,10 @@ newpoint <- function(dataset,pset,value,control) {
   args <- runif(length(low),0,1)*(high-low) + low
   muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',
-                                    stopval=if(gdiff) -1e-8 else -value-control$ll.improve,
+                                    stopval=if(gdiff) -control$overshoot else -value-control$ll.improve,
                                     xtol_rel=0, xtol_abs=0,
                                     maxtime=control$newpoint.maxtime,
+                                    ranseed=sample(.Machine$integer.max,1),
                                     maxeval=10000*length(args),population=20*length(args)))
 
   if(!(muopt$status %in% c(0,2))) {
@@ -522,11 +524,13 @@ newpoint <- function(dataset,pset,value,control) {
     newset$pargs[] <- p2a(c(pr,0))
     gdiff <- TRUE
     muopt <- nloptr::nloptr(muopt$solution, fun, lb=low-control$lowint, ub=high+control$highint,gdiff=TRUE,
-                            opts=list(algorithm='NLOPT_GN_ISRES',stopval=-1e-8,
+                            opts=list(algorithm='NLOPT_GN_ISRES',stopval=-control$overshoot,
                                       xtol_rel=0, xtol_abs=0,
                                       maxtime=control$newpoint.maxtime,
+                                      ranseed=sample(.Machine$integer.max,1),
                                       maxeval=10000*length(args),population=20*length(args)))
   }
+  muopt$eval_f <- NULL # remove, it may contain a big environment, so unsuitable to save
   muopt$value <- muopt$objective 
   muopt$convergence <- muopt$status
   control$callback('newpoint',muopt,dataset,control)
@@ -567,6 +571,8 @@ badpoints <- function(pset,control) {
 
   if(!all(okpt)) {
     control$callback('removepoints',pset,NULL,control,remove=!okpt)
+  } else {
+    return(structure(pset,badremoved=FALSE))
   }
 
   p <- p[okpt]
@@ -615,10 +621,16 @@ optfull <- function(dataset, pset, control) {
     args <- flatten(pset)
     lb <- rep(-Inf,length(args))
     ub <- rep(Inf,length(args))
-    nlopt <- nloptr::nloptr(args, LL, gLL, lb=lb, ub=ub, 
+    fun <- function(args,skel,dataset,ctrl) {
+      pset <- unflatten(args,skel)
+      val <- mphloglik(dataset,pset,dogradient=TRUE,control=ctrl) 
+      list(objective=-val, gradient=-attr(val,'gradient'))
+    }
+    nlopt <- nloptr::nloptr(args, fun, lb=lb, ub=ub, 
                             skel=attr(args,'skeleton'), ctrl=control, dataset=dataset,
                             opts=list(algorithm=method,
                                       maxeval=control$itfac*length(args), ftol_abs=control$tol, xtol_rel=0))
+    nlopt$eval_f <- NULL
     nlopt$par <- unflatten(nlopt$solution,attr(args,'skeleton'))
     nlopt$value <- nlopt$objective
     nlopt$convergence <- if(nlopt$status==3) 0 else nlopt$status

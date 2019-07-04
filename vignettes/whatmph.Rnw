@@ -332,6 +332,9 @@ around the program, I have collected them here with their defaults. Some of them
   we can not use a zero probability for further optimization due to our parametrization of probabilities
   which do not allow it. We must set it to some small value \code{startprob}. Setting it too small
   will make it difficult to move away from it.
+\item{\code{overshoot=\Sexpr{def$overshoot}}.} A numeric. When searching for a positive
+  directional derivative, this is the threshold we must be above. It is positive to avoid
+  marginally positive derivatives due to numerical inaccuracies.
   
 \item{\code{newprob=\Sexpr{def$newprob}}.} A numeric. When searching for a new
   masspoint with \code{gdiff=FALSE}, a new support point is added to
@@ -355,7 +358,7 @@ around the program, I have collected them here with their defaults. Some of them
 
 \item{\code{newpoint.maxtime=\Sexpr{def$newpoint.maxtime}}.} A numeric. When
   searching for a new location point, a global search algorithm from
-  package \pkg{nloptr} is used. \code{maxtime} is its time limit in
+  package \pkg{nloptr} is used. \code{newpoint.maxtime} is its time limit in
   seconds. Should be increased if \code{mphcrm} repeatedly complains
   about not being able to find a new point. However, when there are no
   new points to be found at the end of the estimation, this will

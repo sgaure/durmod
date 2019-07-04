@@ -530,9 +530,9 @@ NumericVector cloglik(List dataset, List pset, List control,
   }
 
   // Remember not to use any R-functions (or allocate Rcpp storage) inside the parallel region.
-  //  double kahanc = 0.0;
+  double neuc = 0.0;
   int memfail = 0;
-#pragma omp parallel for reduction(+: LL) num_threads(nthreads) schedule(guided) //firstprivate(kahanc)
+#pragma omp parallel for reduction(+: LL, neuc) num_threads(nthreads) schedule(guided)
   for(int spellno = 0; spellno < nspells; spellno++) {
     if(memfail > 0) continue;
     memset(llspell, 0, npoints*sizeof(*llspell));
@@ -572,21 +572,17 @@ NumericVector cloglik(List dataset, List pset, List control,
     // integrate it with the probabilities
     double ll;
     if(gdiff) {
+      // Use Neumaier summation to minimize roundoff errors
       ll = logsumofexp(npoints-1,llspell,logprobs);
-      LL += expm1(llspell[npoints-1] - ll);
+      const double v = expm1(llspell[npoints-1] - ll);
+      const double t = LL+v;
+      neuc += (abs(LL) > abs(v)) ? (LL-t) + v : (v - t) + LL;
+      LL = t;
     } else {
       // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
       // for many spells we should perhaps do a compensated addition, Kahan/Neumaier?
-
       LL += ll;
-      /*
-      const double y = ll - kahanc;
-      const double t = LL + y;
-      kahanc = (t-LL) - y;
-      LL = t;
-      */
-      
       
       if(dograd) {
 	// compute the spell gradient, update the gradient
@@ -605,6 +601,7 @@ NumericVector cloglik(List dataset, List pset, List control,
   }  // end of spell loop
 
 
+  if(gdiff) LL += neuc;
   // Deallocate thread private storage
 #pragma omp parallel num_threads(nthreads)
   {  
