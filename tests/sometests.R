@@ -27,6 +27,15 @@ opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g) + S(state)+ID(
 
 summary(opt[[1]])
 
+# reorder some factor levels
+set.seed(42)
+dataset$state=factor(dataset$state, levels=rev(levels(dataset$state)))
+dataset[, ix := rnorm(.N)]
+dataset[state=='unemp' & g == 3, ix := 0]
+opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g:ix) + S(state)+ID(id), data=dataset, 
+              risksets=risksets, control=mphcrm.control(threads=1,iters=1,callback=NULL))
+round(mphmoments(opt[[1]]),5)
+
 # single risk
 dataset <- dataset[state=='onprogram']
 opt <- mphcrm(d ~ x1+x2+D(duration)+ID(id), data=dataset, 

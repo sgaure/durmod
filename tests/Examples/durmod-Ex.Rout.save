@@ -50,7 +50,6 @@ Type 'q()' to quit R.
 > 
 > 
 > 
-> 
 > cleanEx()
 > nameEx("datagen")
 > ### * datagen
@@ -83,34 +82,34 @@ Type 'q()' to quit R.
 > Fit <- mphcrm(d ~ x1+x2 + ID(id) + D(duration) + S(alpha+1) + C(job,alpha),
 +           data=dataset, risksets=risksets,
 +           control=mphcrm.control(threads=1,iters=2))
-mphcrm 00:50:56 i:1 p:1 L:-18110.6717 g:0.00376 mp:1 rc:0.035 e:-0.0000 t:0.4s
-mphcrm 00:50:57 i:2 p:2 L:-17630.5327 g:0.00011 mp:0.46941 rc:0.0094 e:0.6913 t:1.0s
+mphcrm 08:55:56 i:1 p:1 L:-18110.6717 g:0.00376 mp:1 rc:0.035 e:-0.0000 t:0.5s
+mphcrm 08:55:58 i:2 p:2 L:-17630.5327 g:4.57e-05 mp:0.46941 rc:0.0094 e:0.6913 t:1.6s
 > best <- Fit[[1]]
 > print(best)
 Estimate with 2 points, log-likelihood: -17630.5327
      job.x1      job.x2   job.alpha  program.x1  program.x2 
- 0.98920825 -0.88030442 -0.07639306  1.01366789  0.43936469 
+ 0.98920818 -0.88030436 -0.07639308  1.01366788  0.43936468 
 
 Proportional hazard distribution
               prob        job    program
-point  1 0.5305942 0.18769615 0.11557387
-point  2 0.4694058 0.03554702 0.02551425
+point  1 0.5305942 0.18769611 0.11557383
+point  2 0.4694058 0.03554701 0.02551425
 > summary(best)
 $loglik
 [1] -17630.53
 
 $coefs
                  value         se          t      Pr(>|t|)
-job.x1      0.98920825 0.01886271  52.442530  0.000000e+00
-job.x2     -0.88030442 0.01944638 -45.268301  0.000000e+00
-job.alpha  -0.07639306 0.04488823  -1.701851  8.881955e-02
-program.x1  1.01366789 0.02594896  39.063912 2.190932e-307
-program.x2  0.43936469 0.02679311  16.398420  1.567132e-59
+job.x1      0.98920818 0.01886271  52.442524  0.000000e+00
+job.x2     -0.88030436 0.01944638 -45.268294  0.000000e+00
+job.alpha  -0.07639308 0.04488823  -1.701851  8.881952e-02
+program.x1  1.01366788 0.02594896  39.063913 2.190857e-307
+program.x2  0.43936468 0.02679311  16.398420  1.567134e-59
 
 $moments
               mean    variance         sd
-job     0.11627647 0.005765672 0.07593202
-program 0.07329936 0.002020092 0.04494543
+job     0.11627645 0.005765669 0.07593200
+program 0.07329935 0.002020091 0.04494542
 
 > 
 > 
@@ -143,50 +142,52 @@ program 0.07329936 0.002020092 0.04494543
 11010: 5000 -1.6211791 -0.4308813     0 none   0.7595497 unemp
 11011: 5000 -1.0292666  0.2842517     0  job   5.3428880 unemp
 > print(fit)
-iter10: estimate with 10 points, log-likelihood: -22444.4437
+iter11: estimate with 11 points, log-likelihood: -22444.4081
 
     job.x1     job.x2  job.alpha program.x1 program.x2 
- 1.0009419 -1.0321635  0.2631124  1.0281170  0.4613390 
+ 1.0008735 -1.0325680  0.2639588  1.0277278  0.4615064 
 
 Proportional hazard distribution
                prob        job    program
-point  1 0.29124598 0.19113386 0.05105720
-point  2 0.17826310 0.02936591 0.01991611
-point  3 0.14678968 0.06855022 0.10421919
-point  4 0.14306577 0.06900042 0.02830728
-point  5 0.07378302 0.02374826 0.11547125
-point  6 0.06068950 0.15950141 0.35636092
-point  7 0.05122232 0.56000248 0.30616111
-point  8 0.02478382 0.00691305 0.03667940
-point  9 0.01795984 0.01028534 0.00247337
-point 10 0.01219696 1.25381602 0.01129966
+point  1 0.29551603 0.18117206 0.04952916
+point  2 0.17551306 0.02929003 0.01990073
+point  3 0.14320792 0.06733470 0.10353076
+point  4 0.13256398 0.06570729 0.02745677
+point  5 0.07340761 0.02367727 0.11519289
+point  6 0.06334622 0.15515941 0.33685578
+point  7 0.03702530 0.51505700 0.38638621
+point  8 0.02740006 0.59002793 0.11472997
+point  9 0.02480169 0.00690884 0.03666506
+point 10 0.01797659 0.01028509 0.00247507
+point 11 0.00924152 1.29672040 0.01067561
 
-iter9: estimate with 9 points, log-likelihood: -22444.8684
-iter8: estimate with 8 points, log-likelihood: -22445.5053
+iter10: estimate with 10 points, log-likelihood: -22444.5760
+iter9: estimate with 9 points, log-likelihood: -22444.6837
+iter8: estimate with 8 points, log-likelihood: -22444.8358
 iter7: estimate with 7 points, log-likelihood: -22445.8447
 iter6: estimate with 6 points, log-likelihood: -22449.1927
-iter5: estimate with 5 points, log-likelihood: -22459.1021
-iter4: estimate with 4 points, log-likelihood: -22469.0497
+iter5: estimate with 5 points, log-likelihood: -22461.3014
+iter4: estimate with 4 points, log-likelihood: -22470.3431
 iter3: estimate with 3 points, log-likelihood: -22483.5537
 iter2: estimate with 2 points, log-likelihood: -22568.1711
 iter1: estimate with 1 points, log-likelihood: -23397.2902
 nullmodel: estimate with 1 points, log-likelihood: -28974.1282
 > summary(fit[[1]])
 $loglik
-[1] -22444.44
+[1] -22444.41
 
 $coefs
                 value         se          t      Pr(>|t|)
-job.x1      1.0009419 0.01949812  51.335307  0.000000e+00
-job.x2     -1.0321635 0.02421473 -42.625436  0.000000e+00
-job.alpha   0.2631124 0.07223999   3.642199  2.715595e-04
-program.x1  1.0281170 0.02591834  39.667547 9.090808e-322
-program.x2  0.4613390 0.03412898  13.517518  2.630429e-41
+job.x1      1.0008735 0.01953029  51.247230  0.000000e+00
+job.x2     -1.0325680 0.02423803 -42.601146  0.000000e+00
+job.alpha   0.2639588 0.07260225   3.635683  2.785089e-04
+program.x1  1.0277278 0.02595800  39.591941 1.256903e-320
+program.x2  0.4615064 0.03425654  13.472069  4.824799e-41
 
 $moments
               mean    variance         sd
-job     0.13660160 0.030330937 0.17415779
-program 0.08468938 0.008893922 0.09430759
+job     0.13617702 0.028997653 0.17028697
+program 0.08489246 0.009307573 0.09647576
 
 > 
 > 
@@ -241,8 +242,8 @@ program 0.08468938 0.008893922 0.09430759
 > risksets <- list(c('job','program'), c('job'))
 > Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
 +      risksets=risksets, control=mphcrm.control(threads=1,iters=2))
-mphcrm 00:50:58 i:1 p:1 L:-23397.2902 g:7.42e-07 mp:1 rc:0.024 e:-0.0000 t:0.6s
-mphcrm 00:51:00 i:2 p:2 L:-22568.1711 g:7.7e-05 mp:0.33279 rc:0.01 e:0.6361 t:1.7s
+mphcrm 08:55:59 i:1 p:1 L:-23397.2902 g:7.42e-07 mp:1 rc:0.024 e:-0.0000 t:0.6s
+mphcrm 08:56:01 i:2 p:2 L:-22568.1711 g:8.66e-06 mp:0.33279 rc:0.01 e:0.6361 t:2.0s
 > best <- Fit[[1]]
 > summary(best)
 $loglik
@@ -250,16 +251,16 @@ $loglik
 
 $coefs
                  value         se           t     Pr(>|t|)
-job.x1      0.99014875 0.01602300  61.7954811 0.000000e+00
-job.x2     -0.95838783 0.01774888 -53.9970979 0.000000e+00
-job.alpha  -0.03351985 0.03936906  -0.8514262 3.945511e-01
-program.x1  0.98379119 0.01992627  49.3715699 0.000000e+00
-program.x2  0.33475436 0.02102882  15.9188346 1.994277e-56
+job.x1      0.99014874 0.01602300  61.7954815 0.000000e+00
+job.x2     -0.95838784 0.01774888 -53.9970985 0.000000e+00
+job.alpha  -0.03351997 0.03936906  -0.8514292 3.945495e-01
+program.x1  0.98379118 0.01992627  49.3715725 0.000000e+00
+program.x2  0.33475435 0.02102882  15.9188352 1.994260e-56
 
 $moments
               mean    variance         sd
 job     0.11061255 0.003609301 0.06007746
-program 0.07106368 0.001161028 0.03407385
+program 0.07106368 0.001161028 0.03407386
 
 > 
 > 
@@ -305,25 +306,26 @@ program 0.07106368 0.001161028 0.03407385
 > data(durdata)
 > best <- fit[[1]]
 > mphdist(best)
-               prob         job     program
-point  1 0.29124598 0.191133858 0.051057205
-point  2 0.17826310 0.029365906 0.019916106
-point  3 0.14678968 0.068550215 0.104219193
-point  4 0.14306577 0.069000415 0.028307277
-point  5 0.07378302 0.023748264 0.115471254
-point  6 0.06068950 0.159501410 0.356360925
-point  7 0.05122232 0.560002476 0.306161113
-point  8 0.02478382 0.006913055 0.036679402
-point  9 0.01795984 0.010285340 0.002473367
-point 10 0.01219696 1.253816016 0.011299662
+                prob         job     program
+point  1 0.295516031 0.181172055 0.049529161
+point  2 0.175513062 0.029290032 0.019900729
+point  3 0.143207919 0.067334696 0.103530756
+point  4 0.132563981 0.065707287 0.027456766
+point  5 0.073407615 0.023677269 0.115192890
+point  6 0.063346222 0.155159409 0.336855783
+point  7 0.037025302 0.515057004 0.386386214
+point  8 0.027400064 0.590027931 0.114729973
+point  9 0.024801694 0.006908842 0.036665062
+point 10 0.017976590 0.010285094 0.002475075
+point 11 0.009241522 1.296720397 0.010675608
 > mphmoments(best)
               mean    variance         sd
-job     0.13660160 0.030330937 0.17415779
-program 0.08468938 0.008893922 0.09430759
+job     0.13617702 0.028997653 0.17028697
+program 0.08489246 0.009307573 0.09647576
 > mphcov.log(best)
-              job   program
-job     1.0544610 0.4314493
-program 0.4314493 0.9184263
+             job   program
+job     1.054228 0.4384890
+program 0.438489 0.9104734
 > 
 > 
 > 
@@ -353,7 +355,7 @@ program 0.4314493 0.9184263
 > cleanEx()
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  4.433 0.048 4.506 0.002 0.003 
+Time elapsed:  5.381 0.043 5.449 0.001 0.005 
 > grDevices::dev.off()
 null device 
           1 

@@ -397,7 +397,7 @@ NumericVector cloglik(List dataset, List pset, List control,
   const int N = d.size();
   const int transitions = parset.size();
 
-  List risklist = as<List>(dataset["riskset"]);
+  List risklist = as<List>(dataset["risksets"]);
   const int nrisks = risklist.size();
   IntegerVector state = as<IntegerVector>(dataset["state"]);
   

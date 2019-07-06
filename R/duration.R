@@ -145,49 +145,6 @@ mphcrm <- function(formula,data,risksets=NULL,
   dataset$spellidx <- c(0L,which(diff(as.integer(id))!=0),length(id))
   dataset$nspells <- length(dataset$spellidx)-1L
 
-  state <- dataset$state
-  hasriskset <- !is.null(risksets)
-  if(hasriskset && is.null(state)) 
-    warning("Riskset is specified, but no state S(). All risks are assumed to be present.")
-  if(is.null(state)) hasriskset <- FALSE
-
-  if(hasriskset) {
-    if(is.factor(state)) {
-      m <- match(levels(state), names(risksets))
-      if(anyNA(m)) stop(sprintf('level %s of state is not in the riskset names\n',levels(state)[is.na(m)]))
-      # recode state to integer
-      state <- m[state]
-      dataset$state <- state
-    } else {
-      srange <- range(state)
-      if(srange[1] != 1) stop('smallest state must be 1 (index into riskset)')
-      if(srange[2] > length(risksets)) {
-        stop(sprintf('max state is %d, but there are only %d risksets\n',srange[2],length(risksets)))
-      }
-    }
-    # recode risksets from transition level names to integers
-    tlevels <- dataset$tlevels
-    risksets <- lapply(risksets, function(set) {
-      ind <- match(set,tlevels)
-      if(anyNA(ind)) stop(sprintf('Non-existent transition %s in risk set\n',set[is.na(ind)]))
-      ind
-    })
-
-    # check if transitions are taken which are not in the riskset
-    d <- dataset[['d']]
-
-    badtrans <- mapply(function(dd,r) dd != 0 && !(dd %in% r), d, risksets[state])
-    if(any(badtrans)) {
-      n <- which(badtrans)[1]
-      stop(sprintf("In observation %d(id=%d), a transition to %s is taken, but the riskset of the state(%d) does not allow it",
-                   n, id[n], tlevels[d[n]], state[n]))
-    }
-
-    dataset$riskset <- risksets
-  } else {
-    dataset$state <- 0L
-    dataset$riskset <- list()
-  }
 
   pset <- makeparset(dataset,1)
 
@@ -800,11 +757,8 @@ mymodelmatrix <- function(formula,mf,risksets) {
   else
     duration <- rep(1,nrow(mf))
 
-  state <- NULL
-  if(length(Ilist$S)) {
-    state <- mf[[as.character(Ilist$S)]]
-    if(!is.factor(state)) state <- as.integer(state)
-  }
+
+
   # and the repsonse, convert to factor with appropriate levels
   orig.d <- model.response(mf)
   df <- as.factor(orig.d)
@@ -833,6 +787,52 @@ mymodelmatrix <- function(formula,mf,risksets) {
     if(anyNA(enm)) stop(sprintf('transition to %s specified in conditional covariate, but no such transition exists.\n',
                                 trnames[is.na(enm)]))
   }  
+
+  state <- NULL
+  if(length(Ilist$S)) {
+    state <- mf[[as.character(Ilist$S)]]
+    if(!is.factor(state)) state <- as.integer(state)
+  }
+
+  hasriskset <- !is.null(risksets)
+  if(hasriskset && is.null(state)) 
+    warning("Riskset is specified, but no state S(). All risks are assumed to be present.")
+  if(is.null(state)) hasriskset <- FALSE
+
+  if(hasriskset) {
+    if(is.factor(state)) {
+      m <- match(levels(state), names(risksets))
+      if(anyNA(m)) stop(sprintf('level %s of state is not in the riskset names\n',levels(state)[is.na(m)]))
+      # recode state to integer
+      state <- m[state]
+    } else {
+      srange <- range(state)
+      if(srange[1] != 1) stop('smallest state must be 1 (index into riskset)')
+      if(srange[2] > length(risksets)) {
+        stop(sprintf('max state is %d, but there are only %d risksets\n',srange[2],length(risksets)))
+      }
+    }
+    # recode risksets from transition level names to integers
+    risksets <- lapply(risksets, function(set) {
+      ind <- match(set,tlevels)
+      if(anyNA(ind)) stop(sprintf('Non-existent transition %s in risk set\n',set[is.na(ind)]))
+      ind
+    })
+
+    # check if transitions are taken which are not in the riskset
+
+    badtrans <- mapply(function(dd,r) dd != 0 && !(dd %in% r), d, risksets[state])
+    if(any(badtrans)) {
+      n <- which(badtrans)[1]
+      stop(sprintf("In observation %d(id=%d), a transition to %s is taken, but the riskset of the state(%d) does not allow it",
+                   n, id[n], tlevels[d[n]], state[n]))
+    }
+
+  } else {
+    state <- 0L
+    risksets <- list()
+  }
+
 
   transitions <- nlevels(df)-ztrans
   cls <- attr(terms(mf),'dataClasses')
@@ -874,8 +874,8 @@ mymodelmatrix <- function(formula,mf,risksets) {
     mat <- model.matrix(mt,mf)
 
     # which observations are under risk for this transition?
-    if(!is.null(risksets)) {
-      riskobs <- sapply(risksets[state], function(r) thistr %in% r)
+    if(length(risksets)) {
+      riskobs <- sapply(risksets[state], function(r) t %in% r)
     } else riskobs <- seq_along(df)
 
     # remove constant covariates
@@ -929,8 +929,13 @@ mymodelmatrix <- function(formula,mf,risksets) {
         message(sprintf("*** Removing factor %s from transition %s, no variation\n",term,thistr))
         return(NULL) #no more levels, discard entire factor
       }
-      val <- numeric(length(f))
-      excl <- flev[sapply(flev, function(ll) {val[f==ll] <- if(length(xx)>1) xx[f==ll] else 1; var(val) == 0})]
+      val <- numeric(length(f));
+      excl <- flev[sapply(flev, function(ll) {
+        idx <- na.omit(f==ll)
+        if(!length(idx)) return(TRUE)
+        val[idx] <- if(length(xx)>1) xx[idx] else 1
+        var(val) == 0
+      })]
       if(length(excl)) 
         message(sprintf("*** Removing level %s from factor %s in transition %s, no variation\n",excl,term,thistr))
       iaf <- factor(iaf,levels=flev,exclude=excl)
@@ -957,6 +962,7 @@ mymodelmatrix <- function(formula,mf,risksets) {
     structure(list(mat=scalemat,faclist=faclist), recode=list(offset=offset,scale=scale))
   })
   names(data) <- tlevels
-  dataset <- list(data=data, d=d, nobs=nrow(mf), tlevels=tlevels,duration=duration,id=id,state=state)
+  dataset <- list(data=data, d=d, nobs=nrow(mf), tlevels=tlevels,duration=duration,id=id,state=state,
+                  risksets=risksets)
   dataset
 }
