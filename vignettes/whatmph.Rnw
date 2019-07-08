@@ -315,6 +315,9 @@ around the program, I have collected them here with their defaults. Some of them
   with a highly optimized and parallel BLAS, like mkl from Intel. See the R documentation for how
   to do this.
 
+  In case you run on a cluster (see the \code{cluster} control parameter), the \code{threads} parameter is 
+  the number of threads on each node in the cluster. In this case, \code{threads} can be a vector of integers,
+  if you have different number of cpus on each node.
 \item{\code{iters=\Sexpr{def$iters}}.} An integer. The number of iterations to perform. The estimation may stop earlier, if
   neither the log likelihood \emph{nor} the entropy improves. 
 
@@ -413,15 +416,41 @@ around the program, I have collected them here with their defaults. Some of them
   The Newton-methods can achieve a smaller gradient than BFGS.  For
   these, it could be a good idea to increase \code{itfac}.
 
-\item{\code{cluster=NULL.}} Cluster specification from package \pkg{parallel} or \pkg{snow}.
+\item{\code{cluster=NULL}.} Cluster specification from package \pkg{parallel} or \pkg{snow}.
   In addition to utilizing all the cores/cpus on a computer, \code{mphcrm} may also
   spread across several computers. It supports running on a cluster 
   from package \code{parallel} or \code{snow}. The dataset will be
   split among the cluster nodes, with approximately equally many observations on each. The nodes will
   then do their share of the likelihood computations. If using a cluster, the \code{threads} parameter will
-  be the number of cpus used on each cluster node.
+  be the number of cpus used on each cluster node. It can also be a vector, different number of threads
+  on each node, in which case the dataset will be split unevenly to approximately match the number
+  of threads.
+
+  If running on a professional cluster with a resource manager such as
+  SLURM, TORQUE or similar, it is usually possible to pick up
+  information about the cluster nodes from the resource manager,
+  typically from environment variables. With SLURM you can e.g. obtain
+  the number of allocated cpus on each node of your job with something
+  like \code{threads <- clusterEvalQ(cluster, as.integer(Sys.getenv("SLURM\_CPUS\_ON\_NODE")))}.  
+  In general, you will have to
+  check local documentation for how this can be done.
+
   In general, when using parallelization, one should make sure that the cpus are not overbooked and that
   the nodes you are running on are approximately equally fast. 
+
+\item{\code{nodeshares=NULL}.} A numeric vector. When running on a cluster, the default
+  is to share the data equally among the nodes, or in the case \code{threads} is a vector of
+  node-specific threads, equally among the threads on each node. If this is unsatisfactory, e.g.
+  because the nodes have different computing speeds, you can specify a vector of node specific shares
+  of the data set. 
+  
+  Say you have 4 nodes in the cluster, but the last two are half as fast as the first two, just specify
+  \code{nodeshares=c(2,2,1,1)}, and the last two nodes will get half as much data as the first two. If in
+  addition, the first two have 8 cpus, and the last two have four, specify:
+  \code{threads=c(8, 8, 4, 4)}, and \code{nodeshares=c(2*8, 2*8, 4, 4)}. The entries in the \code{nodeshares}
+  vector will be divided by their sum, so it is not necessary that they sum to 1, it is their relative
+  sizes which matter.
+
 \end{itemize}
 
 \bibliographystyle{apalike}

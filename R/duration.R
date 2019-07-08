@@ -207,7 +207,8 @@ mphcrm.control <- function(...) {
                itfac=20L,
                fishblock=128L,
                callback=mphcrm.callback,
-               cluster=NULL)
+               cluster=NULL,
+               nodeshares=NULL)
   args <- list(...)
   fullargs <- names(ctrl)[pmatch(names(args), names(ctrl))]
   bad <- names(args)[is.na(fullargs)]

@@ -6,12 +6,19 @@ prepcluster <- function(dset,control) {
   cluster <- control$cluster
   
   spellidx <- dset$spellidx+1
-  K <- length(parallel::clusterCall(cluster, function() 1))
-#  if(K == 1) {message('cluster of size 1 ignored'); return()}
+  N <- spellidx[length(spellidx)]
+
+  K <- length(cluster)
+  threads <- as.integer(rep(control$threads,length.out=K))
+  if(is.null(control$nodeshares)) {
+    shares <- threads
+  } else {
+    shares <- rep(control$nodeshares,length.out=K)
+  }
+  cumeach <- cumsum(shares)/sum(shares) * N
 
   # we should find a set of spells so that dset is evenly divided
-  N <- spellidx[length(spellidx)]
-  cumeach <- (1:K)/K*N
+
   ends <- sapply(cumeach, function(i) tail(which(spellidx < i),1))
   starts <- 1L+c(0L,ends[-K])
   spe <- c(spellidx,N+1)
@@ -65,6 +72,7 @@ prepcluster <- function(dset,control) {
   parallel::clusterEvalQ(cluster, library(durmod))
   parallel::clusterApply(cluster,dsplit,function(dset) {assign('dset', dset, 
                                                                environment(durmod::.cloglik)); NULL})
+  parallel::clusterApply(cluster,threads, function(thr) {assign('threads',thr,environment(durmod::.cloglik)); NULL})
   assign('cluster',cluster,environment(mphloglik))
 }
 
@@ -86,7 +94,7 @@ mphloglik <- local({
     mc[[2L]] <- NULL  
     # get the other args
     args <- eval.parent(mc)
-    args[['control']] <- args[['control']][c('threads','fishblock')]
+    args[['control']] <- args[['control']][c('fishblock')]
     # put back dataset
     mc <- as.call(c(list(quote(durmod::.cloglik)),quote(dset), args))
     ret <- parallel::clusterCall(cluster, eval, mc)
@@ -104,10 +112,12 @@ mphloglik <- local({
 #' @export
 .cloglik <- local({
   dset <- NULL
+  threads <- NULL
   function(...) {
     mc <- match.call()
     mc[[1L]] <- cloglik
     mc[[2L]] <- dset
+    mc[['control']]$threads <- threads
     eval.parent(mc)
   }
 })
