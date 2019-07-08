@@ -7,15 +7,15 @@ prepcluster <- function(dset,control) {
   
   spellidx <- dset$spellidx+1
   K <- length(parallel::clusterCall(cluster, function() 1))
-  if(K == 1) {message('cluster of size 1 ignored'); return()}
-#  K <- 7
+#  if(K == 1) {message('cluster of size 1 ignored'); return()}
+
   # we should find a set of spells so that dset is evenly divided
   N <- spellidx[length(spellidx)]
   cumeach <- (1:K)/K*N
   ends <- sapply(cumeach, function(i) tail(which(spellidx < i),1))
   starts <- 1L+c(0L,ends[-K])
   spe <- c(spellidx,N+1)
-  csplit <- mapply(function(s,e) spellidx[s]:(spe[e+1]-1), starts,ends,SIMPLIFY=TRUE)
+  csplit <- mapply(function(s,e) spellidx[s]:(spe[e+1]-1), starts,ends,SIMPLIFY=FALSE)
 
   # csplit is a list. One element for each node.
   # Each element is a vector of observations which
@@ -52,7 +52,7 @@ prepcluster <- function(dset,control) {
       m
     })
     list(data=data,d=d, timing=dset$timing, id=id, 
-         spellidx=NULL, duration=duration, state=state, riskset=dset$riskset)
+         spellidx=NULL, duration=duration, state=state, risksets=dset$risksets)
   })
 
   # Then add the id and spellidx in each entry
