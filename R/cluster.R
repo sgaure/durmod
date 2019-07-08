@@ -91,7 +91,7 @@ mphloglik <- local({
     }
     mc[[1L]] <- quote(list)
     # ditch dataset
-    mc[[2L]] <- NULL  
+    mc <- mc[-2L]
     # get the other args
     args <- eval.parent(mc)
     args[['control']] <- args[['control']][c('fishblock')]
