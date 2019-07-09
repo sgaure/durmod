@@ -13,6 +13,7 @@ prepcluster <- function(dset,control) {
   if(is.null(control$nodeshares)) {
     shares <- threads
   } else {
+    if(any(control$nodeshares < 0) || sum(control$nodeshares) == 0) stop('negative or zero nodeshares')
     shares <- rep(control$nodeshares,length.out=K)
   }
   cumeach <- cumsum(shares)/sum(shares) * N
@@ -20,6 +21,16 @@ prepcluster <- function(dset,control) {
   # we should find a set of spells so that dset is evenly divided
 
   ends <- sapply(cumeach, function(i) tail(which(spellidx < i),1))
+  # make sure there is at least one
+  count <- diff(c(0,ends))
+  for(i in rev(seq_along(count)[-1])) {
+    borrow <- 1 - count[i]
+    if(borrow <= 0) next
+    count[i-1] = count[i-1] - borrow
+    count[i] = 1
+  }
+  if(count[1] <= 0) {warning("There are more nodes than individuals, ignoring parallelization"); return()}
+  ends <- cumsum(count)
   starts <- 1L+c(0L,ends[-K])
   spe <- c(spellidx,N+1)
   csplit <- mapply(function(s,e) spellidx[s]:(spe[e+1]-1), starts,ends,SIMPLIFY=FALSE)
