@@ -22,6 +22,6 @@ f <- factor(sample(30:60, 200, replace=TRUE))
 g <- smashlevels(f, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
 table(g)
 # If the syntax permits, the backticks can be avoided.
-h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:60))
+h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
 table(h)
 }
