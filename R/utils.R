@@ -204,3 +204,30 @@ timestr <- function(t) {
   }
   str
 }
+
+#' Collapse levels of a factor
+#' @description
+#' Combines levels of a factor into new levels
+#' @param f
+#' factor.
+#' @param newlevels
+#' list. The names of \code{newlevels} are the new levels. Each list element is a list
+#' of old levels in the factor \code{f} which should be combined into the new level
+#' @examples
+#' # create a factor with levels 30:60
+#' f <- factor(sample(30:60, 200, replace=TRUE))
+#' # combine 35-40 into a single level, 41-50 into a single level, and 51-60 into a single level
+#  # levels 30-34 are left as is. Note the backticks, necessary because these must be parsed as names.
+#' g <- smashlevels(f, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
+#' table(g)
+#' # If the syntax permits, the backticks can be avoided.
+#' h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
+#' table(h)
+#' @export
+smashlevels <- function(f, newlevels) {
+  f <- as.factor(f)
+  olev <- levels(f)
+  for(nl in names(newlevels)) olev[match(newlevels[[nl]], olev)] <- nl
+  levels(f) <- olev
+  f
+}

@@ -206,6 +206,7 @@ mphcrm.control <- function(...) {
                method='BFGS',
                itfac=20L,
                fishblock=128L,
+               addmultiple=FALSE,
                callback=mphcrm.callback,
                cluster=NULL,
                nodeshares=NULL)
@@ -441,7 +442,7 @@ optdist <- function(dataset,pset,control) {
   val[distpos] <- dopt$par
   dopt$par <- unflatten(val)
   control$callback('dist',dopt,dataset,control)
-  pset
+  structure(dopt$par,value=-dopt$value)
 }
 
 newpoint <- function(dataset,pset,value,control) {
@@ -611,14 +612,28 @@ addpoint <- function(dataset,pset,value,control) {
   # optimize probabilities
   newset <- pset
   control$minprob <- 0
-  for(i in 1:2) {
-    newset <- newpoint(dataset,newset,value,control)
-    newset <- optdist(dataset,newset,control)
-    newset <- badpoints(newset,control)
-    if(!isTRUE(attr(newset,'badremoved'))) break
-    # optimize dist after removing point(s)
-#    newset <- unflatten(optfull(dataset,newset,control)$par)
-  } 
+  if(isTRUE(control$addmultiple)) {
+    pval <- value
+    repeat {
+      newset <- newpoint(dataset,newset,pval,control)
+      newset <- optdist(dataset,newset,control)
+      val <- attr(newset,'value')
+#      message(date(), ' add pt, val=',val,' pval=',pval)
+      if(val <= pval+1) break
+      pval <- val
+    }
+#    message('fini add pt, val=',val)
+    newset <- badpoints(newset, control)
+  } else {
+    for(i in 1:2) {
+      newset <- newpoint(dataset,newset,value,control)
+      newset <- optdist(dataset,newset,control)
+      newset <- badpoints(newset,control)
+      if(!isTRUE(attr(newset,'badremoved'))) break
+      # optimize dist after removing point(s)
+      #    newset <- unflatten(optfull(dataset,newset,control)$par)
+    } 
+  }
   newset
 }
 
