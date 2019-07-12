@@ -367,12 +367,22 @@ around the program, I have collected them here with their defaults. Some of them
   new points to be found at the end of the estimation, this will
   necessarily happen.  See also \code{lowint}.
 
+\item{\code{addmultiple=\Sexpr{def$addmultiple}}.} A positive
+  numeric. The algorithm tries to add more points to the distribution
+  without optimizing the structural parameters as long as the
+  improvement from the last point is larger than
+  \code{addmultiple}. If the improvement is less, all parameters are
+  optimized before more points are attempted. Setting
+  \code{addmultiple=1} or smaller may save some time if there are many
+  structural parameters, but setting it too small risks ending up with too many points
+  which later may be discarded, and possible convergence problems.
+
 \item{\code{callback=mphcrm.callback.}} A function. If the one-line diagnostic from \code{mphcrm} is insufficient,
   it is possible to write your own. It will replace the default callback (which you can call from your function).
   In this way you can e.g. get diagnostics on particular coefficients, save intermediate results
   to file, or other partakings. See \code{mphcrm.callback}.
 
-\item{\code{jobname=\Sexpr{def$jobname}}.} A character string. The initial portion of the one-line diagnostic. Useful if you
+\item{\code{jobname="\Sexpr{def$jobname}"}.} A character string. The initial portion of the one-line diagnostic. Useful if you
   e.g. use \code{parallel::mclapply} to run several estimations in parallel. They can have individual names so
   you can see the progress. 
 \item{\code{tspec="\%T"}.} A character string. The format of the time stamp in the one-line diagnostic, as described
@@ -432,11 +442,17 @@ around the program, I have collected them here with their defaults. Some of them
   typically from environment variables. With SLURM you can e.g. obtain
   the number of allocated cpus on each node of your job with something
   like \code{threads <- clusterEvalQ(cluster, as.integer(Sys.getenv("SLURM\_CPUS\_ON\_NODE")))}.  
-  In general, you will have to
-  check local documentation for how this can be done.
+  In general, you will have to check local documentation for how this can be done, and how
+  to best set up a cluster with package parallel. (There can be some catches, in particular
+  with MPI which spin-waits to lower latency, and thus takes up a CPU for the ``dormant'' master process.)
 
-  In general, when using parallelization, one should make sure that the cpus are not overbooked and that
-  the nodes you are running on are approximately equally fast. 
+  In general, when using parallelization, one should make sure that
+  the cpus are not overbooked and that the nodes you are running on
+  are approximately equally fast. There is some overhead when
+  distributing the computation among many nodes, it will usually run
+  faster if using \code{threads} on a single node, or few nodes, both
+  because the thread algorithm uses shared memory and because the
+  division of data between the threads are dynamic.
 
 \item{\code{nodeshares=NULL}.} A numeric vector. When running on a cluster, the default
   is to share the data equally among the nodes, or in the case \code{threads} is a vector of

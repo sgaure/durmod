@@ -206,7 +206,7 @@ mphcrm.control <- function(...) {
                method='BFGS',
                itfac=20L,
                fishblock=128L,
-               addmultiple=FALSE,
+               addmultiple=Inf,
                callback=mphcrm.callback,
                cluster=NULL,
                nodeshares=NULL)
@@ -592,7 +592,7 @@ optfull <- function(dataset, pset, control) {
     nlopt$eval_f <- NULL
     nlopt$par <- unflatten(nlopt$solution,attr(args,'skeleton'))
     nlopt$value <- nlopt$objective
-    nlopt$convergence <- if(nlopt$status==3) 0 else nlopt$status
+    nlopt$convergence <- if(nlopt$status %in% c(1,3)) 0 else nlopt$status
     return(nlopt)
 }
 
@@ -612,27 +612,13 @@ addpoint <- function(dataset,pset,value,control) {
   # optimize probabilities
   newset <- pset
   control$minprob <- 0
-  if(isTRUE(control$addmultiple)) {
-    pval <- value
-    repeat {
-      newset <- newpoint(dataset,newset,pval,control)
-      newset <- optdist(dataset,newset,control)
-      val <- attr(newset,'value')
-#      message(date(), ' add pt, val=',val,' pval=',pval)
-      if(val <= pval+1) break
-      pval <- val
-    }
-#    message('fini add pt, val=',val)
-    newset <- badpoints(newset, control)
-  } else {
-    for(i in 1:2) {
-      newset <- newpoint(dataset,newset,value,control)
-      newset <- optdist(dataset,newset,control)
-      newset <- badpoints(newset,control)
-      if(!isTRUE(attr(newset,'badremoved'))) break
-      # optimize dist after removing point(s)
-      #    newset <- unflatten(optfull(dataset,newset,control)$par)
-    } 
+  pval <- value
+  repeat {
+    newset <- newpoint(dataset,newset,pval,control)
+    newset <- optdist(dataset,newset,control)
+    val <- attr(newset,'value')
+    if(val <= pval+abs(control$addmultiple)) break
+    pval <- val
   }
   newset
 }
@@ -942,18 +928,18 @@ mymodelmatrix <- function(formula,mf,risksets) {
       xx <- if(length(x)) x[riskobs] else 1
       flev <- levels(f)
       if(length(flev) == 0) {
-        message(sprintf("*** Removing factor %s from transition %s, no variation\n",term,thistr))
+        message(sprintf("*** Removing %s from transition %s, no variation\n",term,thistr))
         return(NULL) #no more levels, discard entire factor
       }
       val <- numeric(length(f));
       excl <- flev[sapply(flev, function(ll) {
-        idx <- na.omit(f==ll)
+        idx <- which(f==ll)
         if(!length(idx)) return(TRUE)
         val[idx] <- if(length(xx)>1) xx[idx] else 1
         var(val) == 0
       })]
       if(length(excl)) 
-        message(sprintf("*** Removing level %s from factor %s in transition %s, no variation\n",excl,term,thistr))
+        message(sprintf("*** Removing level %s from %s in transition %s, no variation\n",excl,term,thistr))
       iaf <- factor(iaf,levels=flev,exclude=excl)
 #      iaf <- factor(iaf,levels=levels(factor(iaf[riskobs])))
       structure(iaf,x=x)
