@@ -245,6 +245,36 @@ the mixture distribution can be way off. It is good practice to inspect the
 mixture distribution for such extreme points, and go back to a previous iteration (which
 has slightly worse likelihood) without such extreme points.
 
+\subsection{Overparameterization?}
+We did note in \cite{GRK07} that picking the number of points which yields
+the lowest AIC yields satisfactory results. We did not, however, have any theoretical justification
+for doing this, and still don't. It is easy to look at the estimates with the lowest AIC:
+<<>>=
+summary(fit[[which.min(sapply(fit,AIC))]])
+@ 
+AIC is generally used to pick a model which is parsimonious, but still explains the
+data well, i.e. to avoid overparameterization. AIC has an interpretation as the distance
+between the model and reality. However, since the points are not found in a canonical order,
+the AIC is really not well defined in these models. Another estimation of the
+same data may find the points in a different order, with different log likelihoods along the way,
+resulting in another set of points having the lowest AIC in the new estimation.
+
+Also, keep in mind that the method of using a discrete distribution
+in this way is \emph{not} an ``approximation''. When the likelihood can't be improved by 
+adding more points, we have actually reached the likelihood which would result if we were to
+integrate with the true distribution, be it discrete or continuous. This is the content of
+\cite[Theorems 3.1 and 4.1]{lindsay83}. Thus, there is really no theoretical risk
+of adding ``too many'' points in the distribution, save for those which may result from
+numerical problems.
+
+The drawback with the method is that when the likelihood can't be improved by adding more
+points, the purely technical reason is that something degenerates, i.e. something breaks down,
+at least the Fisher matrix. That is, we will necessarily run into numerical problems at the 
+end of the estimation, and this may result in irrelevant points with very low probabilities
+being added, because they seem to increase the likelihood by some small amount due to numerical
+inaccuracies. This may be the case if the algorithm has run several iterations at the end
+which barely moved the likelihood.
+
 \section{More options}
 \subsection{Interval timing}
 The example above had exactly recorded time. For some applications we do have that, while
@@ -449,10 +479,13 @@ around the program, I have collected them here with their defaults. Some of them
   In general, when using parallelization, one should make sure that
   the cpus are not overbooked and that the nodes you are running on
   are approximately equally fast. There is some overhead when
-  distributing the computation among many nodes, it will usually run
-  faster if using \code{threads} on a single node, or few nodes, both
-  because the thread algorithm uses shared memory and because the
-  division of data between the threads are dynamic.
+  distributing the computation among many nodes, depending on how the
+  nodes are interconnected, and due to somewhat sub-optimal
+  implementations in package \pkg{parallel} which e.g. does not
+  utilize collective MPI-calls. \code{mphcrm} will usually run faster
+  if using \code{threads} on a single node, or few nodes, both because
+  the thread algorithm uses shared memory and because the division of
+  data between the threads are dynamic.
 
 \item{\code{nodeshares=NULL}.} A numeric vector. When running on a cluster, the default
   is to share the data equally among the nodes, or in the case \code{threads} is a vector of
@@ -467,6 +500,12 @@ around the program, I have collected them here with their defaults. Some of them
   vector will be divided by their sum, so it is not necessary that they sum to 1, it is their relative
   sizes which matter.
 
+\item{\code{fisher=\Sexpr{def$fisher}}.} A logical. Should the Fisher matrix be computed? You will normally
+  want this, it is used to compute the standard errors. However, it may take some time if you have
+  a large number of covariates. If you do not need standard errors, e.g.\ if you do a bootstrap or Monte Carlo
+  simulation or similar, you may switch off the computation of the Fisher matrix and save some time.
+\item{\code{gradient=\Sexpr{def$gradient}}.} A logical. As \code{fisher}, but for the gradient. I doubt much 
+  time can be saved by switching this off.
 \end{itemize}
 
 \bibliographystyle{apalike}

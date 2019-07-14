@@ -46,9 +46,7 @@ can be specified as \code{NULL}, or ignored.}
 \itemize{
 \item \code{"exact"}. The timing is exact, the transition occured at the end of the observation interval.
 \item \code{"interval"}. The transition occured some time during the observation interval. This model
-  can be notoriously hard to estimate due to unfavourable numerics. It could be worthwhile to
-  lower the control parameter \code{ll.improve} to 0.0001 or something, to ensure it does not
-  give up to early.
+  can be notoriously hard to estimate due to unfavourable numerics. 
 \item \code{"none"}. There is no timing, the transition occured, or not. A logit model is used.
 }}
 

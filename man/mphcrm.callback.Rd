@@ -10,7 +10,7 @@ mphcrm.callback(fromwhere, opt, dataset, control, ...)
 \item{fromwhere}{a string which identifies which step in the algorithm it is called from. \code{fromwhere=='full'} means
 that it is a full estimation of all the parameters. There are also other codes, when adding a point,
 when removing duplicate points. When some optimization is completed it is called with the
-return status from \code{\link{optim}} (and in some occasions from \code{\link[nloptr]{nloptr}}.}
+return status from \code{\link{optim}} (and in some occasions from \code{\link[nloptr]{nloptr}}).}
 
 \item{opt}{Typically the result of a call to \code{\link{optim}}.}
 
