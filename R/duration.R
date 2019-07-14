@@ -64,9 +64,7 @@
 #' \itemize{
 #' \item \code{"exact"}. The timing is exact, the transition occured at the end of the observation interval.
 #' \item \code{"interval"}. The transition occured some time during the observation interval. This model
-#'   can be notoriously hard to estimate due to unfavourable numerics. It could be worthwhile to
-#'   lower the control parameter \code{ll.improve} to 0.0001 or something, to ensure it does not
-#'   give up to early.
+#'   can be notoriously hard to estimate due to unfavourable numerics. 
 #' \item \code{"none"}. There is no timing, the transition occured, or not. A logit model is used.
 #' }
 #' @param risksets
@@ -227,7 +225,7 @@ mphcrm.control <- function(...) {
 #' a string which identifies which step in the algorithm it is called from. \code{fromwhere=='full'} means
 #' that it is a full estimation of all the parameters. There are also other codes, when adding a point,
 #' when removing duplicate points. When some optimization is completed it is called with the
-#' return status from \code{\link{optim}} (and in some occasions from \code{\link[nloptr]{nloptr}}.
+#' return status from \code{\link{optim}} (and in some occasions from \code{\link[nloptr]{nloptr}}).
 #'
 #' @param opt
 #' Typically the result of a call to \code{\link{optim}}.

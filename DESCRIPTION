@@ -8,7 +8,7 @@ Authors@R: person("Simen", "Gaure", email="simen@gaure.no", role=c("aut","cre"),
 URL: https://github.com/sgaure/durmod
 BugReports: https://github.com/sgaure/durmod/issues
 Maintainer: Simen Gaure <simen@gaure.no>
-Description: Estimation of mixed proportional hazard competing risk model with NPMLE.
+Description: Estimation of piecewise constant mixed proportional hazard competing risk model with NPMLE.
  The model is described in S. Gaure et al. (2007) <doi:10.1016/j.jeconom.2007.01.015>,
  J. Heckman and B. Singer (1984) <doi:10.2307/1911491>, and
  B.G. Lindsay (1983) <doi:10.1214/aos/1176346059>.
