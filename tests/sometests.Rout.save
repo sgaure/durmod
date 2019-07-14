@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-06-28 r76752) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-07-12 r76825) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -137,7 +137,13 @@ program 0.0380        0  0
 > dataset[state=='unemp' & g == 3, ix := 0]
 > opt <- mphcrm(d ~ x1+x2+C(job,alpha+f)+D(duration)+C(program,f*g:ix) + S(state)+ID(id), data=dataset, 
 +               risksets=risksets, control=mphcrm.control(threads=1,iters=1,callback=NULL))
-*** Removing level 3 from factor g:ix in transition program, no variation
+*** Removing level 3 from g:ix in transition program, no variation
+
+*** Removing level 2:3 from f:g:ix in transition program, no variation
+*** Removing level 3:3 from f:g:ix in transition program, no variation
+*** Removing level 4:3 from f:g:ix in transition program, no variation
+*** Removing level 5:3 from f:g:ix in transition program, no variation
+*** Removing level 6:3 from f:g:ix in transition program, no variation
 
 > round(mphmoments(opt[[1]]),5)
           mean variance sd
@@ -168,4 +174,4 @@ job 0.0172
 > 
 > proc.time()
    user  system elapsed 
-   7.05    1.27    6.56 
+   6.54    1.14    5.96 
