@@ -62,7 +62,7 @@ prepcluster <- function(dset,control) {
       faclist <- lapply(dd$faclist, function(ff) {
         f <- ff[obsvec]
         x <- attr(ff,'x',exact=TRUE)
-        if(!is.null(x)) attr(f,'x') <- x[obsvec]
+        attr(f,'x') <- if(length(x)) x[obsvec] else x
         f
       })
       m <- list(mat=mat,faclist=faclist)
