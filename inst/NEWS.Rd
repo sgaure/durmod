@@ -1,5 +1,11 @@
 \name{NEWS}
 \title{durmod news}
+\section{Changes in version 1.1-1}{
+  \itemize{
+    \item Fixed a bug which prevented the use of factors when running on
+    a cluster.
+  }
+}
 \section{Changes in version 1.1}{
   \itemize{
     \item Remove covariates and factor levels which are constant for a
