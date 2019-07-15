@@ -251,13 +251,17 @@ the lowest AIC yields satisfactory results. We did not, however, have any theore
 for doing this, and still don't. It is easy to look at the estimates with the lowest AIC:
 <<>>=
 summary(fit[[which.min(sapply(fit,AIC))]])
-@ 
-AIC is generally used to pick a model which is parsimonious, but still explains the
-data well, i.e. to avoid overparameterization. AIC has an interpretation as the distance
-between the model and reality. However, since the points are not found in a canonical order,
-the AIC is really not well defined in these models. Another estimation of the
-same data may find the points in a different order, with different log likelihoods along the way,
-resulting in another set of points having the lowest AIC in the new estimation.
+@
+
+AIC is generally used to pick a model which is parsimonious, but
+still explains the data well, i.e. to avoid overparameterization. AIC
+has an interpretation as the distance between the model and reality,
+see e.g.\ \cite{BA02}. However, since the points are not found in a
+canonical order, the AIC is really not well defined in these
+models. Another estimation of the same data may find the points in a
+different order, with different log likelihoods along the way,
+resulting in another set of points having the lowest AIC in the new
+estimation.
 
 Also, keep in mind that the method of using a discrete distribution
 in this way is \emph{not} an ``approximation''. When the likelihood can't be improved by 
