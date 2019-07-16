@@ -135,7 +135,11 @@ the \(\beta\)s and the two \(\mu\)s.  Then we increase \(n\) to 2, let
 log-likelihood in the direction of positive \(p_2\) is positive.
 This is used as starting point for a new likelihood maximization.
 Then \(n\) is increased to \(3\), and we proceed in this fashion, adding masspoints to the
-distribution until we are no longer able to increase the likelihood.
+distribution until we are no longer able to increase the likelihood. Note that even if
+we are not able to find a point with positive derivative (as in \cite[Theorem 4.1]{lindsay83}),
+we anyway use the closest we have found, and do another round optimizing the full model.
+The reason is that the theorem assumes the coefficients for the covariates have been found,
+but in practice they may still change, creating an opportunity for another point.
 
 In \pkg{durmod} we use the \code{mphcrm} function for this purpose. Here is an example.
 First we create a ``riskset'', a specification of which hazards are experienced in various states:
