@@ -26,7 +26,7 @@
 #' @importFrom nloptr nloptr
 #' @importFrom numDeriv grad hessian jacobian
 #' @importFrom parallel detectCores
-#' @importFrom data.table data.table
+#' @importFrom data.table data.table setattr
 #' @importFrom mvtnorm rmvnorm
 NULL
 

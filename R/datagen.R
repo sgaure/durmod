@@ -90,9 +90,9 @@ datagen <- function(N,censor=80) {
   spells <- persons[,{
     genspell(x1,x2,ve,vp,censor)
   }, by=id]
-  spells$d <- factor(spells$d,levels=0:2)
-  levels(spells$d) <- c('none','job','program')
-  spells$state <- factor(spells$alpha+1,levels=1:2)
-  levels(spells$state) <- c('unemp', 'onprogram')
-  structure(spells, means=means, cov=cv)
+  spells$d <- factor(spells$d,levels=0:2,labels=c('none','job','program'))
+  spells$state <- factor(spells$alpha+1,levels=1:2,labels=c('unemp','onprogram'))
+  setattr(spells,'means',means)
+  setattr(spells,'cov',cv)
+  spells
 }
