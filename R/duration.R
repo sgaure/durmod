@@ -192,7 +192,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 #'   argument of \code{\link{mphcrm}}.
 #' @export
 mphcrm.control <- function(...) {
-  ctrl <- list(iters=50,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE, hessian=FALSE, 
+  ctrl <- list(iters=50,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE,
                method='BFGS', gdiff=TRUE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
                overshoot=0.001,
                startprob=1e-4,
@@ -206,6 +206,8 @@ mphcrm.control <- function(...) {
                fishblock=128L,
                addmultiple=Inf,
                callback=mphcrm.callback,
+               numgrad=FALSE,
+               hessian=FALSE,
                cluster=NULL,
                nodeshares=NULL)
   args <- list(...)
