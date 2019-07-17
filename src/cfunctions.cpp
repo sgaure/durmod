@@ -123,7 +123,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 		       int *nvars,
 		       double **matp,
 		       FACTOR **factors,
-		       double *dllspell) {
+		       double *dllspell, const bool onlydist) {
   int inipos = 0;
   const int t = tr-1;
   for(int s = 0; s < t; s++) inipos += nvars[s] + faclevels[s] + npoints;
@@ -145,38 +145,43 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
     for(int tt = 0; tt < transitions; tt++) {
       if(riskmask && !riskmask[tt]) {pos += nvars[tt]+faclevels[tt]+npoints;continue;}
       const double haz = exp(lh[tt] + mup[tt][j]);
-      const double *mat = &matp[tt][obs*nvars[tt]];
+      if(!onlydist) {
+	const double *mat = &matp[tt][obs*nvars[tt]];
 
-      for(int k = 0; k < nvars[tt]; k++) {
-	switch(timing) {
-	case exact:
-	case interval:
-	  dll[pos++] -= dur*haz*mat[k];
-	  break;
-	case none:
-	  dll[pos++] -= haz*mat[k]/sumhaz;
-	  break;
+	for(int k = 0; k < nvars[tt]; k++) {
+	  switch(timing) {
+	  case exact:
+	  case interval:
+	    dll[pos++] -= dur*haz*mat[k];
+	    break;
+	  case none:
+	    dll[pos++] -= haz*mat[k]/sumhaz;
+	    break;
+	  }
 	}
-      }
-      const FACTOR *fac = factors[tt];
-      // loop through the factors for this transition
-      for(int k = 0; k < nfacs[tt]; k++) {
-	const int fval = fac[k].val[obs];
-	if(fval <= 0 || ISNAN(fval)) {pos += fac[k].nlevels; continue;}
-	const double f = (fac[k].x != 0) ? fac[k].x[obs] : 1.0;
-	switch(timing) {
-	case exact:
-	case interval:
-	  dll[pos + fval-1] -= dur*haz*f;
-	  break;
-	case none:
-	  dll[pos + fval-1] -= haz*f/sumhaz;
-	  break;
+	const FACTOR *fac = factors[tt];
+	// loop through the factors for this transition
+	for(int k = 0; k < nfacs[tt]; k++) {
+	  const int fval = fac[k].val[obs];
+	  if(fval <= 0 || ISNAN(fval)) {pos += fac[k].nlevels; continue;}
+	  const double f = (fac[k].x != 0) ? fac[k].x[obs] : 1.0;
+	  switch(timing) {
+	  case exact:
+	  case interval:
+	    dll[pos + fval-1] -= dur*haz*f;
+	    break;
+	  case none:
+	    dll[pos + fval-1] -= haz*f/sumhaz;
+	    break;
+	  }
+	  pos += fac[k].nlevels;
 	}
-	pos += fac[k].nlevels;
+      } else {
+	pos += nvars[tt];
+	for(int k = 0; k < nfacs[tt]; k++) pos += factors[tt][k].nlevels;
       }
       // The mu, the covariate is 1
-     
+      
       switch(timing) {
       case exact:
       case interval:
@@ -199,36 +204,40 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       if(timing == interval)
 	funnyexpr = exp(lh[t]+mup[t][j])*(dur*exp(-dur*sumhaz)/expm1(-dur*sumhaz) + 1/sumhaz)-1.0;
 	//	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) + expm1(lh[t]+mup[t][j]-logsumhaz);
-      for(int k = 0; k < nvars[t]; k++) {
-	switch(timing) {
-	case exact:
-	case none:
-	  dll[pos++] += tmat[k];
-	  break;
-	case interval:
-	  dll[pos++] -= tmat[k]*funnyexpr;
-	  break;
+      if(!onlydist) {
+	for(int k = 0; k < nvars[t]; k++) {
+	  switch(timing) {
+	  case exact:
+	  case none:
+	    dll[pos++] += tmat[k];
+	    break;
+	  case interval:
+	    dll[pos++] -= tmat[k]*funnyexpr;
+	    break;
+	  }
 	}
-      }
-      
-      const FACTOR *fac = factors[t];
-      for(int jj = 0; jj < nfacs[t]; jj++) {
-	const int fval = fac[jj].val[obs];
-	if(fval <= 0 || ISNAN(fval)) {pos += fac[jj].nlevels; continue;};  // skip NA-levels, i.e. reference
-	double *x = fac[jj].x;
-	double f = (x != 0) ? x[obs] : 1.0;
-	switch(timing) {
-	case exact:
-	case none:
-	  dll[pos + fval-1] += f;
-	  break;
-	case interval:
-	  dll[pos + fval-1] -= f*funnyexpr;
-	  break;
+	
+	const FACTOR *fac = factors[t];
+	for(int jj = 0; jj < nfacs[t]; jj++) {
+	  const int fval = fac[jj].val[obs];
+	  if(fval <= 0 || ISNAN(fval)) {pos += fac[jj].nlevels; continue;};  // skip NA-levels, i.e. reference
+	  double *x = fac[jj].x;
+	  double f = (x != 0) ? x[obs] : 1.0;
+	  switch(timing) {
+	  case exact:
+	  case none:
+	    dll[pos + fval-1] += f;
+	    break;
+	  case interval:
+	    dll[pos + fval-1] -= f*funnyexpr;
+	    break;
+	  }
+	  pos += fac[jj].nlevels;
 	}
-	pos += fac[jj].nlevels;
+      } else {
+	pos += nvars[t];
+	for(int k = 0; k < nfacs[t]; k++) pos += factors[t][k].nlevels;
       }
-      
       // and for the mus
       switch(timing) {
       case exact:
@@ -246,7 +255,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 inline void updategradient(const int npoints, const double *dllspell, const double *llspell, 
 			   const double *logprobs, const double ll,
 			   const int transitions, const int npars, const int *nvars, const int *faclevels, 
-			   const double *pargs, const int totalpars, double *spellgrad) {
+			   const double *pargs, const int totalpars, double *spellgrad, const bool onlyprobs) {
 
   (void) memset(spellgrad, 0, totalpars*sizeof(*spellgrad));
   //  (void) memset(gkahanc, 0, totalpars*sizeof(*gkahanc));
@@ -268,26 +277,28 @@ inline void updategradient(const int npoints, const double *dllspell, const doub
   // First for the ordinary covariates where it equals sum(p_j exp(lh_j) dlh_j/dx)
 
   for(int j = 0; j < npoints; j++) {
-    const double *dll = &dllspell[j*npars];
-    const double scale = exp(logprobs[j] + llspell[j] - ll);
+    if(!onlyprobs) {
+      const double *dll = &dllspell[j*npars];
+      const double scale = exp(logprobs[j] + llspell[j] - ll);
     
-    int pos = 0;
-    for(int t = 0; t < transitions; t++) {
-      for(int k = 0; k < nvars[t]+faclevels[t]; k++) {
-	spellgrad[pos] += scale * dll[pos];
-	pos++;
+      int pos = 0;
+      for(int t = 0; t < transitions; t++) {
+	for(int k = 0; k < nvars[t]+faclevels[t]; k++) {
+	  spellgrad[pos] += scale * dll[pos];
+	  pos++;
+	}
+	// the mu for this masspoint in this transition
+	spellgrad[pos+j] += scale*dll[pos+j];
+	pos += npoints; // next transition
       }
-      // the mu for this masspoint in this transition
-      spellgrad[pos+j] += scale*dll[pos+j];
-      pos += npoints; // next transition
     }
-    
     // The probability-parameters ak occur in all the probabilities
     // compute dPj / dak
     // The a's are in pargs, assume a0==0 so that Pk=exp(ak)/sum(exp(aj))
     // let ld = log(1+sum(exp(pargs))), the log denominator.
     // Can be moved out of j-loop. We trust the compiler to do that.
     // Stick to logs, 
+
     const double ld = log1sumx(npoints-1, pargs);
     const double lscale = llspell[j] - ll;
     for(int k = 0; k < npoints-1; k++) {
@@ -378,7 +389,7 @@ inline void  updatefisher(int *gradfill, int fishblock, int totalpars, double *g
 // [[Rcpp::export]]
 NumericVector cloglik(List dataset, List pset, List control,
 		      const bool gdiff=false, const bool dogradient=false, 
-		      const bool dofisher=false) {
+		      const bool dofisher=false, const bool onlyprobs=false, const bool onlydist=false) {
   const IntegerVector d = as<IntegerVector>(dataset["d"]);
   const IntegerVector id = as<IntegerVector>(dataset["id"]);
   const NumericVector duration = as<NumericVector>(dataset["duration"]);
@@ -563,9 +574,9 @@ NumericVector cloglik(List dataset, List pset, List control,
       // update llspell with the observation log likelihood 
       obsloglik(d[i], timing, lh, duration[i], mup, npoints, transitions, riskmask, llspell);
       // update dllspell with the gradient of the observation log likelihood
-      if(dograd) 
+      if(dograd && !onlyprobs) 
 	gobsloglik(d[i], timing, lh, duration[i], i, mup, npoints, transitions, npars, nfacs,
-		   faclevels, riskmask, nvars, matp, factors, dllspell);
+		   faclevels, riskmask, nvars, matp, factors, dllspell, onlydist);
     }
 
     // We have collected the loglikelihood of a spell, one for each masspoint
@@ -587,7 +598,7 @@ NumericVector cloglik(List dataset, List pset, List control,
       if(dograd) {
 	// compute the spell gradient, update the gradient
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
-		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad);
+		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad, onlyprobs);
 	// update global gradient with spell gradient
 	for(int k = 0; k < totalpars; k++) totgrad[k] += spellgrad[k];
 	if(dofisher) {

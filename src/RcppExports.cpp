@@ -16,8 +16,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // cloglik
-NumericVector cloglik(List dataset, List pset, List control, const bool gdiff, const bool dogradient, const bool dofisher);
-RcppExport SEXP _durmod_cloglik(SEXP datasetSEXP, SEXP psetSEXP, SEXP controlSEXP, SEXP gdiffSEXP, SEXP dogradientSEXP, SEXP dofisherSEXP) {
+NumericVector cloglik(List dataset, List pset, List control, const bool gdiff, const bool dogradient, const bool dofisher, const bool onlyprobs, const bool onlydist);
+RcppExport SEXP _durmod_cloglik(SEXP datasetSEXP, SEXP psetSEXP, SEXP controlSEXP, SEXP gdiffSEXP, SEXP dogradientSEXP, SEXP dofisherSEXP, SEXP onlyprobsSEXP, SEXP onlydistSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,7 +27,9 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const bool >::type gdiff(gdiffSEXP);
     Rcpp::traits::input_parameter< const bool >::type dogradient(dogradientSEXP);
     Rcpp::traits::input_parameter< const bool >::type dofisher(dofisherSEXP);
-    rcpp_result_gen = Rcpp::wrap(cloglik(dataset, pset, control, gdiff, dogradient, dofisher));
+    Rcpp::traits::input_parameter< const bool >::type onlyprobs(onlyprobsSEXP);
+    Rcpp::traits::input_parameter< const bool >::type onlydist(onlydistSEXP);
+    rcpp_result_gen = Rcpp::wrap(cloglik(dataset, pset, control, gdiff, dogradient, dofisher, onlyprobs, onlydist));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -49,7 +51,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_durmod_cdebug", (DL_FUNC) &_durmod_cdebug, 1},
-    {"_durmod_cloglik", (DL_FUNC) &_durmod_cloglik, 6},
+    {"_durmod_cloglik", (DL_FUNC) &_durmod_cloglik, 8},
     {"_durmod_genspell", (DL_FUNC) &_durmod_genspell, 5},
     {NULL, NULL, 0}
 };

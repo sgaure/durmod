@@ -330,23 +330,26 @@ pointiter <- function(dataset,pset,control) {
 
   tryCatch(
     {
-      i <- 0; improve <- TRUE
-      while(improve && i < control$iters) {
+      i <- 0; improve <- TRUE; redo <- FALSE
+      while(improve && i < control$iters || redo) {
         i <- i+1
         control$mainiter <- i
         newopt <- ml(dataset,pset,control)
         newopt$mainiter <- i
         unscaleopt <- rescale(dataset,newopt)
+
         # insert into list
         opt <- c(list(unscaleopt), opt)
         names(opt)[1L] <- sprintf('iter%d',i)
         control$callback('full',unscaleopt, dataset,control)
+
         # check termination
+        redo <- attr(newopt$par,'badremoved') && !redo  # redo once if bad point
         ll.improve <- newopt$value - prevopt$value
         e.improve <- abs(newopt$entropy - prevopt$entropy)
         improve <- (ll.improve > control$ll.improve || e.improve > control$e.improve)
         prevopt <- newopt
-        if(improve && i < control$iters) pset <- addpoint(dataset,newopt$par,newopt$value,control)
+        if(improve && i < control$iters || redo) pset <- addpoint(dataset,newopt$par,newopt$value,control)
       }
       if(!improve) opt <- opt[-1]
       badset <- badpoints(opt[[1]]$par,control)
@@ -409,7 +412,7 @@ optprobs <- function(dataset,pset,control) {
   }
   gpfun <- function(a) {
     val[probpos] <- a
-    -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, control=control),'gradient')[probpos]
+    -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, onlyprobs=TRUE, control=control),'gradient')[probpos]
   }
 
   # go all the way with the relative tolerance, we need to get out of bad places.
@@ -432,7 +435,7 @@ optdist <- function(dataset,pset,control) {
   }
   gdfun <- function(a) {
     val[distpos] <- a
-    -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, control=control),'gradient')[distpos]
+    -attr(mphloglik(dataset,unflatten(val),dogradient=TRUE, onlydist=TRUE, control=control),'gradient')[distpos]
   }
 
   dopt <- optim(val[distpos],dfun,gdfun,method='BFGS',
@@ -475,7 +478,7 @@ newpoint <- function(dataset,pset,value,control) {
 
   if(!(muopt$status %in% c(0,2))) {
     muopt$convergence <- muopt$status
-    muopt$value <- muopt$objective 
+    muopt$value <- -muopt$objective 
     control$callback('newpoint',muopt,dataset,control)
     # that one failed, try broader interval
     newset$pargs[] <- p2a(c(pr,0))
@@ -488,7 +491,7 @@ newpoint <- function(dataset,pset,value,control) {
                                       maxeval=10000*length(args),population=20*length(args)))
   }
   muopt$eval_f <- NULL # remove, it may contain a big environment, so unsuitable to save
-  muopt$value <- muopt$objective 
+  muopt$value <- -muopt$objective 
   muopt$convergence <- muopt$status
   control$callback('newpoint',muopt,dataset,control)
   
@@ -639,8 +642,6 @@ ml <- function(dataset,pset,control) {
   })
 
   skel <- attr(flatten(sol),'skeleton')
-
-
 
   opt$value <- -opt$value
   opt$par <- sol

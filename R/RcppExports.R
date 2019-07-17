@@ -5,8 +5,8 @@ cdebug <- function(dodebug) {
     invisible(.Call(`_durmod_cdebug`, dodebug))
 }
 
-cloglik <- function(dataset, pset, control, gdiff = FALSE, dogradient = FALSE, dofisher = FALSE) {
-    .Call(`_durmod_cloglik`, dataset, pset, control, gdiff, dogradient, dofisher)
+cloglik <- function(dataset, pset, control, gdiff = FALSE, dogradient = FALSE, dofisher = FALSE, onlyprobs = FALSE, onlydist = FALSE) {
+    .Call(`_durmod_cloglik`, dataset, pset, control, gdiff, dogradient, dofisher, onlyprobs, onlydist)
 }
 
 genspell <- function(x1, x2, ve, vp, censor) {
