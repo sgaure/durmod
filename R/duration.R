@@ -129,8 +129,7 @@ mphcrm <- function(formula,data,risksets=NULL,
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(model.frame)
-
-  dataset <- mymodelmatrix(F,mf,risksets)
+  dataset <- mymodelmatrix(F,mf,risksets,parent.frame())
 
   dataset$timing <- timing
   id <- dataset$id
@@ -726,7 +725,7 @@ makeparset <- function(dataset,npoints,oldset) {
 }
 
 
-mymodelmatrix <- function(formula,mf,risksets) {
+mymodelmatrix <- function(formula,mf,risksets,frame) {
 
   #### Handle the specials ####
   mt <- terms(formula, specials=c('ID','D', 'S', 'C'))
@@ -750,7 +749,7 @@ mymodelmatrix <- function(formula,mf,risksets) {
   IF <- Reduce(addc,cvars,IF)
   # Now, IF is a suitable formula with all specials removed.
   mf[[2L]] <- IF
-  mf <- eval.parent(mf)
+  mf <- eval(mf,frame)
 
   # Pick up the special covariates ID, D, and S
   id <- as.integer(mf[[as.character(Ilist$ID)]])

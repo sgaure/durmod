@@ -2,6 +2,10 @@
 \title{durmod news}
 \section{Changes in version 1.1-1}{
   \itemize{
+    \item Fixed a bug which prevents calling \code{mphcrm} from within a
+    function with variables defined there. Like in an \code{mclapply} which
+    creates the data frame.
+    
     \item Fixed a bug which prevented the use of factors when running on
     a cluster.
   }
