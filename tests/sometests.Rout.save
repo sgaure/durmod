@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-07-12 r76825) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-07-05 r76784) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -111,14 +111,14 @@ program.g.4     -0.02071 0.14072   -0.1472  8.83e-01
 program.f:g.2:2 -0.30106 0.19641   -1.5328  1.25e-01
 program.f:g.2:3 -0.24366 0.19296   -1.2627  2.07e-01
 program.f:g.2:4  0.03646 0.20306    0.1796  8.58e-01
-program.f:g.3:2  0.10878 0.19535    0.5568  5.78e-01
+program.f:g.3:2  0.10878 0.19535    0.5569  5.78e-01
 program.f:g.3:3 -0.17411 0.19189   -0.9073  3.64e-01
 program.f:g.3:4  0.16215 0.19720    0.8223  4.11e-01
 program.f:g.4:2 -0.00186 0.17351   -0.0107  9.91e-01
 program.f:g.4:3  0.18890 0.19390    0.9742  3.30e-01
 program.f:g.4:4  0.12597 0.20180    0.6242  5.32e-01
-program.f:g.5:2  0.19734 0.20546    0.9605  3.37e-01
-program.f:g.5:3  0.21732 0.20211    1.0753  2.82e-01
+program.f:g.5:2  0.19735 0.20546    0.9605  3.37e-01
+program.f:g.5:3  0.21733 0.20211    1.0753  2.82e-01
 program.f:g.5:4  0.14749 0.19955    0.7391  4.60e-01
 program.f:g.6:2  0.09271 0.20553    0.4511  6.52e-01
 program.f:g.6:3 -0.48317 0.22859   -2.1137  3.46e-02
@@ -174,4 +174,4 @@ job 0.0172
 > 
 > proc.time()
    user  system elapsed 
-   6.54    1.14    5.96 
+ 11.809   0.231   4.793 
