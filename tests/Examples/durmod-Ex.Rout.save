@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-06-28 r76752) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-07-05 r76784) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -82,33 +82,33 @@ Type 'q()' to quit R.
 > Fit <- mphcrm(d ~ x1+x2 + ID(id) + D(duration) + S(alpha+1) + C(job,alpha),
 +           data=dataset, risksets=risksets,
 +           control=mphcrm.control(threads=1,iters=2))
-mphcrm 08:55:56 i:1 p:1 L:-18110.6717 g:0.00376 mp:1 rc:0.035 e:-0.0000 t:0.5s
-mphcrm 08:55:58 i:2 p:2 L:-17630.5327 g:4.57e-05 mp:0.46941 rc:0.0094 e:0.6913 t:1.6s
+mphcrm 20:52:41 i:1 p:1 L:-18110.6717 g:7.53e-06 mp:1 rc:0.035 e:-0.0000 t:0.3s
+mphcrm 20:52:42 i:2 p:2 L:-17630.5327 g:8.92e-06 mp:0.46941 rc:0.0094 e:0.6913 t:0.9s
 > best <- Fit[[1]]
 > print(best)
 Estimate with 2 points, log-likelihood: -17630.5327
      job.x1      job.x2   job.alpha  program.x1  program.x2 
- 0.98920818 -0.88030436 -0.07639308  1.01366788  0.43936468 
+ 0.98920819 -0.88030436 -0.07639305  1.01366789  0.43936468 
 
 Proportional hazard distribution
               prob        job    program
-point  1 0.5305942 0.18769611 0.11557383
+point  1 0.5305943 0.18769612 0.11557384
 point  2 0.4694058 0.03554701 0.02551425
 > summary(best)
 $loglik
 [1] -17630.53
 
 $coefs
-                 value         se          t      Pr(>|t|)
-job.x1      0.98920818 0.01886271  52.442524  0.000000e+00
-job.x2     -0.88030436 0.01944638 -45.268294  0.000000e+00
-job.alpha  -0.07639308 0.04488823  -1.701851  8.881952e-02
-program.x1  1.01366788 0.02594896  39.063913 2.190857e-307
-program.x2  0.43936468 0.02679311  16.398420  1.567134e-59
+                 value         se         t      Pr(>|t|)
+job.x1      0.98920819 0.01886271  52.44252  0.000000e+00
+job.x2     -0.88030436 0.01944638 -45.26829  0.000000e+00
+job.alpha  -0.07639305 0.04488823  -1.70185  8.881962e-02
+program.x1  1.01366789 0.02594896  39.06391 2.190876e-307
+program.x2  0.43936468 0.02679311  16.39842  1.567139e-59
 
 $moments
               mean    variance         sd
-job     0.11627645 0.005765669 0.07593200
+job     0.11627645 0.005765670 0.07593201
 program 0.07329935 0.002020091 0.04494542
 
 > 
@@ -242,8 +242,8 @@ program 0.08489246 0.009307573 0.09647576
 > risksets <- list(c('job','program'), c('job'))
 > Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
 +      risksets=risksets, control=mphcrm.control(threads=1,iters=2))
-mphcrm 08:55:59 i:1 p:1 L:-23397.2902 g:7.42e-07 mp:1 rc:0.024 e:-0.0000 t:0.6s
-mphcrm 08:56:01 i:2 p:2 L:-22568.1711 g:8.66e-06 mp:0.33279 rc:0.01 e:0.6361 t:2.0s
+mphcrm 20:52:42 i:1 p:1 L:-23397.2902 g:7.42e-07 mp:1 rc:0.024 e:-0.0000 t:0.4s
+mphcrm 20:52:43 i:2 p:2 L:-22568.1711 g:3.45e-05 mp:0.33279 rc:0.01 e:0.6361 t:0.9s
 > best <- Fit[[1]]
 > summary(best)
 $loglik
@@ -251,15 +251,15 @@ $loglik
 
 $coefs
                  value         se           t     Pr(>|t|)
-job.x1      0.99014874 0.01602300  61.7954815 0.000000e+00
-job.x2     -0.95838784 0.01774888 -53.9970985 0.000000e+00
-job.alpha  -0.03351997 0.03936906  -0.8514292 3.945495e-01
-program.x1  0.98379118 0.01992627  49.3715725 0.000000e+00
-program.x2  0.33475435 0.02102882  15.9188352 1.994260e-56
+job.x1      0.99014874 0.01602300  61.7954798 0.000000e+00
+job.x2     -0.95838784 0.01774888 -53.9970972 0.000000e+00
+job.alpha  -0.03352005 0.03936906  -0.8514313 3.945483e-01
+program.x1  0.98379118 0.01992627  49.3715734 0.000000e+00
+program.x2  0.33475435 0.02102882  15.9188353 1.994255e-56
 
 $moments
               mean    variance         sd
-job     0.11061255 0.003609301 0.06007746
+job     0.11061256 0.003609301 0.06007746
 program 0.07106368 0.001161028 0.03407386
 
 > 
@@ -330,6 +330,35 @@ program 0.438489 0.9104734
 > 
 > 
 > cleanEx()
+> nameEx("smashlevels")
+> ### * smashlevels
+> 
+> flush(stderr()); flush(stdout())
+> 
+> ### Name: smashlevels
+> ### Title: Collapse levels of a factor
+> ### Aliases: smashlevels
+> 
+> ### ** Examples
+> 
+> # create a factor with levels 30:60
+> f <- factor(sample(30:60, 200, replace=TRUE))
+> # combine 35-40 into a single level, 41-50 into a single level, and 51-60 into a single level
+> g <- smashlevels(f, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
+> table(g)
+g
+   30    31    32    33    34 35-40 41-50 51-60 
+    9     5     5     3     4    46    67    61 
+> # If the syntax permits, the backticks can be avoided.
+> h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
+> table(h)
+h
+     young  pushing40  pushing50 fossilized 
+        26         46         67         61 
+> 
+> 
+> 
+> cleanEx()
 > nameEx("timestr")
 > ### * timestr
 > 
@@ -355,7 +384,7 @@ program 0.438489 0.9104734
 > cleanEx()
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  5.381 0.043 5.449 0.001 0.005 
+Time elapsed:  3.125 0.108 3.253 0 0 
 > grDevices::dev.off()
 null device 
           1 

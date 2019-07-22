@@ -94,8 +94,10 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
     }
     switch(timing) {
     case exact:
-    case interval:
       llspell[j] -= dur*exp(logsumhaz);
+      break;
+    case interval:
+      if(tr <= 0) llspell[j] -= dur*exp(logsumhaz);
       break;
     case none:
       llspell[j] -= logsumhaz;
@@ -111,7 +113,7 @@ inline void obsloglik(const int tr, const Timing timing, const double *lh, doubl
 	llspell[j] += lh[tr-1] + mup[tr-1][j];
 	break;
       }
-    }
+    } 
   }
 }
 
@@ -124,11 +126,7 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 		       double **matp,
 		       FACTOR **factors,
 		       double *dllspell, const bool onlydist) {
-  int inipos = 0;
   const int t = tr-1;
-  for(int s = 0; s < t; s++) inipos += nvars[s] + faclevels[s] + npoints;
-  const double *tmat = (t>=0) ? &matp[t][obs*nvars[t]] : 0;
-
   for(int j = 0; j < npoints; j++) {
     double sumhaz = 0;
     double logsumhaz = -DBL_MAX;
@@ -145,17 +143,22 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
     for(int tt = 0; tt < transitions; tt++) {
       if(riskmask && !riskmask[tt]) {pos += nvars[tt]+faclevels[tt]+npoints;continue;}
       const double haz = exp(lh[tt] + mup[tt][j]);
+      const double funnyexpr = (timing==interval) ? 
+	haz*(-dur*exp(-dur*sumhaz)/expm1(-dur*sumhaz) - 
+	     1.0/sumhaz) + (tt==t) : 0.0;
       if(!onlydist) {
 	const double *mat = &matp[tt][obs*nvars[tt]];
 
 	for(int k = 0; k < nvars[tt]; k++) {
 	  switch(timing) {
 	  case exact:
+	    dll[pos++] -= dur*haz*mat[k] - ((tt==t) ? mat[k] : 0.0);
+	    break;
 	  case interval:
-	    dll[pos++] -= dur*haz*mat[k];
+	    dll[pos++] -= (t < 0) ? dur*haz*mat[k] : -mat[k]*funnyexpr;
 	    break;
 	  case none:
-	    dll[pos++] -= haz*mat[k]/sumhaz;
+	    dll[pos++] -= haz*mat[k]/sumhaz - ((tt==t) ? mat[k] : 0.0);
 	    break;
 	  }
 	}
@@ -167,11 +170,13 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
 	  const double f = (fac[k].x != 0) ? fac[k].x[obs] : 1.0;
 	  switch(timing) {
 	  case exact:
+	    dll[pos + fval-1] -= dur*haz*f - ((tt==t) ? f : 0);
+	    break;
 	  case interval:
-	    dll[pos + fval-1] -= dur*haz*f;
+	    dll[pos + fval-1] -= (t < 0) ? dur*haz*f : -f*funnyexpr;
 	    break;
 	  case none:
-	    dll[pos + fval-1] -= haz*f/sumhaz;
+	    dll[pos + fval-1] -= haz*f/sumhaz - ((tt==t) ? f : 0);
 	    break;
 	  }
 	  pos += fac[k].nlevels;
@@ -184,70 +189,16 @@ inline void gobsloglik(const int tr, const Timing timing, const double *lh, doub
       
       switch(timing) {
       case exact:
+	dll[pos+j] -= dur*haz - ((tt==t) ? 1 : 0);
+	break;
       case interval:
-	dll[pos+j] -= dur*haz;
+	dll[pos+j] -= (t < 0) ? dur*haz : -funnyexpr;
 	break;
       case none:
-	dll[pos+j] -= haz/sumhaz;
+	dll[pos+j] -= haz/sumhaz - ((tt==t) ? 1 : 0);
 	break;
       }
       pos += npoints;
-    }
-    if(t >= 0) {
-      int pos = inipos;
-      // complicated expression for interval timing, the derivative of llspell wrt to a parameter
-      // With H the sum of hazards, L the log hazard of transition t, and d duration, we compute
-      // the derivative w.r.t x of the log likelihood
-      // log(1-exp(-d H)) - log(H) + L
-      
-      double funnyexpr = 0;
-      if(timing == interval)
-	funnyexpr = exp(lh[t]+mup[t][j])*(dur*exp(-dur*sumhaz)/expm1(-dur*sumhaz) + 1/sumhaz)-1.0;
-	//	funnyexpr = dur*exp(lh[t]+mup[t][j] - dur*sumhaz)/expm1(-dur*sumhaz) + expm1(lh[t]+mup[t][j]-logsumhaz);
-      if(!onlydist) {
-	for(int k = 0; k < nvars[t]; k++) {
-	  switch(timing) {
-	  case exact:
-	  case none:
-	    dll[pos++] += tmat[k];
-	    break;
-	  case interval:
-	    dll[pos++] -= tmat[k]*funnyexpr;
-	    break;
-	  }
-	}
-	
-	const FACTOR *fac = factors[t];
-	for(int jj = 0; jj < nfacs[t]; jj++) {
-	  const int fval = fac[jj].val[obs];
-	  if(fval <= 0 || ISNAN(fval)) {pos += fac[jj].nlevels; continue;};  // skip NA-levels, i.e. reference
-	  double *x = fac[jj].x;
-	  double f = (x != 0) ? x[obs] : 1.0;
-	  switch(timing) {
-	  case exact:
-	  case none:
-	    dll[pos + fval-1] += f;
-	    break;
-	  case interval:
-	    dll[pos + fval-1] -= f*funnyexpr;
-	    break;
-	  }
-	  pos += fac[jj].nlevels;
-	}
-      } else {
-	pos += nvars[t];
-	for(int k = 0; k < nfacs[t]; k++) pos += factors[t][k].nlevels;
-      }
-      // and for the mus
-      switch(timing) {
-      case exact:
-      case none:
-	dll[pos+j] += 1;
-	break;
-      case interval:
-	dll[pos+j] -= funnyexpr;
-	break;
-      }
     }
   }
 }

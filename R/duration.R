@@ -600,7 +600,7 @@ optfull <- function(dataset, pset, control) {
 
   args <- flatten(pset)
   val <- mphloglik(dataset,pset,dogradient=TRUE,control=control)
-  tol <- 1e-4*control$tol/(control$tol+abs(val))
+  tol <- 1e-14#1e-4*control$tol/(control$tol+abs(val))
   opt <- optim(args,LL,gLL,method=control$method,
         control=list(trace=0,REPORT=10,maxit=control$itfac*length(args),lmm=60,
                      reltol=tol),
