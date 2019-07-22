@@ -2,6 +2,9 @@
 \title{durmod news}
 \section{Changes in version 1.1-1}{
   \itemize{
+    \item Fixed a bug in the interval censored gradient which slowed down
+    convergence dramatically.
+
     \item Fixed a bug which prevents calling \code{mphcrm} from within a
     function with variables defined there. Like in an \code{mclapply} which
     creates the data frame.
