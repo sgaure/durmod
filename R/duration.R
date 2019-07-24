@@ -192,7 +192,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' @export
 mphcrm.control <- function(...) {
   ctrl <- list(iters=50,threads=getOption('durmod.threads'),gradient=TRUE, fisher=TRUE,
-               method='BFGS', gdiff=TRUE, minprob=1e-20, eqtol=1e-4, newprob=1e-4, jobname='mphcrm', 
+               method='BFGS', gdiff=TRUE, minprob=1e-20, eqtol=1e-3, newprob=1e-4, jobname='mphcrm', 
                overshoot=0.001,
                startprob=1e-4,
                ll.improve=1e-3, e.improve=1e-3,
@@ -517,7 +517,7 @@ badpoints <- function(pset,control) {
     for(j in seq_len(i-1)) {
       if(!okpt[j]) next
       muj <- sapply(pset$parset, function(pp) pp$mu[j])
-      if(max(abs(exp(muj) - exp(mui))) < control$eqtol) {
+      if(max(abs(exp(muj) - exp(mui))/(1e-9+exp(muj)+exp(mui))) < control$eqtol) {
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
         colnames(mumat) <- names(pset$parset)

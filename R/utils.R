@@ -12,24 +12,21 @@
 #' geninv(x)
 #' @return A matrix of the same dimension as \code{X} is returned, the Moore-Penrose generalized inverse.
 #' @export
-geninv <- function(X, tol=.Machine$double.eps) {
-  if (length(dim(X)) > 2L || !is.numeric(X)) 
-    stop("'X' must be a numeric matrix")
-  if (!is.matrix(X))  X <- as.matrix(X)
+geninv <- function(X, tol=.Machine$double.eps^(2/3)) {
+  stopifnot(is.numeric(X), length(dim(X)) == 2, is.matrix(X))
   nm <- colnames(X)
-  Xsvd <- svd(X)
-  Positive <- Xsvd$d > max(tol * Xsvd$d[1L], 0)
-  inv <- if (all(Positive)) 
-    Xsvd$v %*% (1/Xsvd$d * t(Xsvd$u))
-  else if (!any(Positive)) 
-    array(NA, dim(X)[2L:1L])
+  s <- svd(X)
+  p <- s$d > max(tol * s$d[1L], 0)
+  inv <- if (all(p)) 
+    s$v %*% (1/s$d * t(s$u))
+  else if (!any(p)) 
+    array(0, dim(X)[2L:1L])
   else {
-    im <- Xsvd$v[, Positive, drop = FALSE] %*% ((1/Xsvd$d[Positive]) * 
-                                                 t(Xsvd$u[, Positive, drop = FALSE]))
-    im[!Positive,!Positive] <- NA
-    im
+    s$v[, p, drop = FALSE] %*% ((1/s$d[p]) * 
+                                t(s$u[, p, drop = FALSE]))
   }
-  structure(inv,badvars=nm[!Positive], dimnames=list(nm,nm))
+#  badvars <- if(any(!p)) names(collin(X))
+  structure(inv, dimnames=list(nm,nm))
 }
 
 nazero <- function(x) ifelse(is.na(x),0,x)

@@ -4,7 +4,7 @@
 \alias{geninv}
 \title{Moore-Penrose generalized inverse}
 \usage{
-geninv(X, tol = .Machine$double.eps)
+geninv(X, tol = .Machine$double.eps^(2/3))
 }
 \arguments{
 \item{X}{matrix}
