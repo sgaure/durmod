@@ -517,7 +517,7 @@ badpoints <- function(pset,control) {
     for(j in seq_len(i-1)) {
       if(!okpt[j]) next
       muj <- sapply(pset$parset, function(pp) pp$mu[j])
-      if(max(abs(exp(muj) - exp(mui))/(1e-9+exp(muj)+exp(mui))) < control$eqtol) {
+      if(max(abs(exp(muj) - exp(mui))/(exp(muj)+exp(mui))) < control$eqtol) {
         mumat <- rbind(muj,mui)
         rownames(mumat) <- c(j,i)
         colnames(mumat) <- names(pset$parset)
