@@ -125,6 +125,19 @@ mphcov <- function(pset) {
   crossprod(sqrt(dist[,1])*(dist[,-1,drop=FALSE]-rep(mean,each=nrow(dist))))
 }
 
+mphmedian <- function(pset) {
+  dist <- mphdist(pset)
+  sapply(colnames(dist)[-1], function(tr) {
+    if(nrow(dist)==1) return(dist[1,tr])
+    oo <- order(dist[,tr])
+    do <- dist[oo,,drop=FALSE]
+    cp <- cumsum(do[,'prob'])
+    above <- which(cp > 0.5)[1]
+    p <- (cp[above]-0.5)/(cp[above]-cp[above-1])
+    as.numeric((1-p)*do[above,tr] + p*do[above-1,tr])
+  })
+}
+
 
 
 #' Extract covariance matrix of the proportional hazard distribution

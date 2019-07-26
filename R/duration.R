@@ -465,9 +465,10 @@ newpoint <- function(dataset,pset,value,control) {
 
   # find ranges for the mus.
   # stick to the mean +/- something  in each dimension
-  mom <- mphmoments(pset)
-  low <- log(mom[,'mean']) - control$lowint
-  high <- log(mom[,'mean']) + control$highint
+  med <- mphmedian(pset)
+  low <- log(med) - control$lowint
+  high <- log(med) + control$highint
+
   args <- runif(length(low),0,1)*(high-low) + low
   muopt <- nloptr::nloptr(args, fun,lb=low, ub=high, gdiff=gdiff,
                           opts=list(algorithm='NLOPT_GN_ISRES',
