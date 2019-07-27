@@ -125,6 +125,11 @@ mphcov <- function(pset) {
   crossprod(sqrt(dist[,1])*(dist[,-1,drop=FALSE]-rep(mean,each=nrow(dist))))
 }
 
+#' Extract medians of the proportional hazard distribution
+#' @rdname mphdist
+#' @description
+#' \code{mphmedian} returns the medians of the hazard distribution.
+#' @export
 mphmedian <- function(pset) {
   dist <- mphdist(pset)
   sapply(colnames(dist)[-1], function(tr) {
@@ -133,6 +138,7 @@ mphmedian <- function(pset) {
     do <- dist[oo,,drop=FALSE]
     cp <- cumsum(do[,'prob'])
     above <- which(cp > 0.5)[1]
+    if(above == 1) return(do[1,tr])
     p <- (cp[above]-0.5)/(cp[above]-cp[above-1])
     as.numeric((1-p)*do[above,tr] + p*do[above-1,tr])
   })
