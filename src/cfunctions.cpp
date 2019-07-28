@@ -473,11 +473,11 @@ NumericVector cloglik(List dataset, List pset, List control,
   // we could do array reduction on the gradient, but it's not supported in
   // the current C-compiler for windows on cran. So do it manually.
   static double *lh, *totgrad;
-  static double *spellgrad, *llspell, *dllspell; 
+  static double *spellgrad, *llspell, *dllspell, *gneuc; 
   int *nonzero; // only used temporarily in critical section, so not thread local
   if(dofisher) nonzero = (int*) R_alloc(totalpars, sizeof(int)); 
 
-#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad)
+#pragma omp threadprivate(llspell,dllspell, lh, spellgrad, totgrad, gneuc)
 #pragma omp parallel num_threads(nthreads)
   {  
     // Can't do R_alloc in threads
@@ -488,6 +488,7 @@ NumericVector cloglik(List dataset, List pset, List control,
     if(dograd) {
       dllspell = new double[npoints*npars];
       spellgrad = new double[totalpars];
+      gneuc = new double[totalpars]();
     }
   }
 
@@ -544,14 +545,21 @@ NumericVector cloglik(List dataset, List pset, List control,
       // compute the log likelihood
       ll = logsumofexp(npoints,llspell,logprobs);
       // for many spells we should perhaps do a compensated addition, Kahan/Neumaier?
-      LL += ll;
+      const double t = LL+ll;
+      neuc += (abs(LL) > abs(ll)) ? (LL-t)+ll : (ll-t)+LL;
+      LL = t;
       
       if(dograd) {
 	// compute the spell gradient, update the gradient
 	updategradient(npoints, dllspell, llspell, logprobs, ll,
 		       transitions, npars, nvars, faclevels, pargs, totalpars, spellgrad, onlyprobs);
 	// update global gradient with spell gradient
-	for(int k = 0; k < totalpars; k++) totgrad[k] += spellgrad[k];
+	for(int k = 0; k < totalpars; k++) {
+	  const double t = totgrad[k]+spellgrad[k];
+	  gneuc[k] += (abs(totgrad[k]) > abs(spellgrad[k])) ? (totgrad[k]-t)+spellgrad[k] :
+	    (spellgrad[k] - t) + totgrad[k];
+	  totgrad[k] = t;
+	}
 	if(dofisher) {
 	  // update the fisher matrix from the spellgrad
 	  // we use a global fisher matrix, no omp reduction, so do it in a critical section
@@ -563,15 +571,17 @@ NumericVector cloglik(List dataset, List pset, List control,
   }  // end of spell loop
 
 
-  if(gdiff) LL += neuc;
+  LL += neuc;
   // Deallocate thread private storage
 #pragma omp parallel num_threads(nthreads)
   {  
     delete [] llspell;
     delete [] lh;
     if(dograd) {
+      for(int k = 0; k < gradsize; k++) {totgrad[k] += gneuc[k];}
       delete [] dllspell;
       delete [] spellgrad;
+      delete [] gneuc;
     }
   }
 
@@ -584,12 +594,20 @@ NumericVector cloglik(List dataset, List pset, List control,
     // Reduce the totgrad in a critical section
     NumericVector retgrad(totalpars);
     double *grad = REAL(retgrad);
+    double *neu = new double[gradsize]();
 #pragma omp parallel num_threads(nthreads) 
     {
 #pragma omp critical
-      for(int k = 0; k < gradsize; k++) grad[k] += totgrad[k];
+      for(int k = 0; k < gradsize; k++) {
+	const double t = grad[k] + totgrad[k];
+	neu[k] += (abs(grad[k]) > abs(totgrad[k])) ? (grad[k] - t) + totgrad[k] :
+	  (totgrad[k]-t) + grad[k];
+	grad[k] = t;
+      }
+      delete [] totgrad;
     }
-    if(dograd) {delete [] totgrad;}
+    for(int k = 0; k < gradsize; k++) grad[k] += neu[k];
+    delete [] neu;
     ret.attr("gradient") = retgrad;
   }
 
