@@ -293,9 +293,8 @@ record of the day. In this case, the \code{duration} would be 1 for every observ
 should use the \code{timing="interval"} argument in \code{mphcrm}.  The observation likelihood
 is replaced by,
 \begin{equation}
-h^{d_k}(\mu) \exp(-t_k H(\mu)) \frac{1-\exp(-t_k H(\mu))}{H(\mu)}.
+\frac{h^{d_k}(\mu)}{H(\mu)} (1-\exp(-t_k H(\mu)).
 \end{equation}
-It is the fractional part which distinguishes it from the exact model.
 
 If the hazards are small and we use unit intervals, 
 the difference between the interval and exact model is quite small, so
