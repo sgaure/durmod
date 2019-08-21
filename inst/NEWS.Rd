@@ -1,5 +1,13 @@
 \name{NEWS}
 \title{durmod news}
+\section{Changes in version 1.1-2}{
+  \itemize{
+    \item Some adjustments to default parameters.
+    \item Use median, not mean, for the interval search for new
+    points. Use Neumaier compensated addition in computation of gradients.
+    \item Some more documentation.
+  }
+}
 \section{Changes in version 1.1-1}{
   \itemize{
     \item Fixed a bug in the interval censored gradient which slowed down

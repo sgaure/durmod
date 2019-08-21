@@ -1,5 +1,6 @@
 #' A package for estimating a mixed proportional hazard competing risk model with the NPMLE.
 #'
+#' 
 #' The main method of the package is \code{\link{mphcrm}}. It has an interface
 #' somewhat similar to \code{\link{lm}}.  There is an example of use in \code{\link{datagen}}, with
 #' a generated dataset similiar to the ones in \cite{Gaure et al. (2007)}. For those who have
@@ -21,7 +22,7 @@
 #' may bias the estimates, not just increase uncertainty.  To account for unobserved heterogeneity, a
 #' random intercept is introduced, so that the hazards are of the form \eqn{h_i^j(\mu_k) = exp(X_i \beta_j + \mu_k)}
 #' for \eqn{k} between 1 and some \eqn{n}. The intercept may of course be written multiplicatively as
-#' \eqn{exp(X_i \beta_j) exp(\mu_k)}, that's why they are called \emph{proportional} hazards.
+#' \eqn{exp(X_i \beta_j) exp(\mu_k)}, that is why they are called \emph{proportional} hazards.
 #' 
 #' The individual likelihood depends on the intercept, i.e. \eqn{L_i(\mu_k)}, but we integrate it out
 #' so that the individual likelihood becomes \eqn{\sum p_k L_i(\mu_k)}. The resulting mixture
@@ -30,7 +31,7 @@
 #' Besides the function \code{\link{mphcrm}} which does the actual estimation, there are functions for
 #' extracting the estimated mixture, they are \code{\link{mphdist}}, \code{\link{mphmoments}} and a few more.
 #'
-#' There's a summary function for the fitted model, and there is a data set available with \code{data(durdata}} which
+#' There's a summary function for the fitted model, and there is a data set available with \code{data(durdata)} which
 #' is used for demonstration purposes. Also, an already fitted model is available there, as \code{\link{fit}}.
 #' 
 #' The package may use more than one cpu, the default is taken from \code{getOption("durmod.threads")}
