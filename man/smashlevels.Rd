@@ -17,11 +17,11 @@ Combines levels of a factor into new levels
 }
 \examples{
 # create a factor with levels 30:60
-f <- factor(sample(30:60, 200, replace=TRUE))
+age <- factor(sample(30:60, 200, replace=TRUE))
 # combine 35-40 into a single level, 41-50 into a single level, and 51-60 into a single level
-g <- smashlevels(f, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
+g <- smashlevels(age, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
 table(g)
 # If the syntax permits, the backticks can be avoided.
-h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
+h <- smashlevels(age, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
 table(h)
 }

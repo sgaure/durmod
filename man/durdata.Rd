@@ -22,7 +22,7 @@ The two hazards are influenced by covariates observed by the researcher, called 
 \code{"x2"}. In addition there are unobserved characteristics influencing the hazards. Being
 on a programme also influences the hazard to get a job. In the generated dataset, being on
 a programme is the indicator variable \code{alpha}. While on a programme, the only transition you can
-make is \code{"job"}.
+make is \code{"job"}. 
 
 The dataset is organized as a series of rows for each individual. Each row is a time period
 with constant covariates.

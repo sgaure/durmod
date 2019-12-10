@@ -7,8 +7,11 @@
 \usage{
 flatten(x, exclude = attr(x, "exclude"))
 
-unflatten(flesh, skeleton = attr(flesh, "skeleton"),
-  exclude = attr(flesh, "exclude"))
+unflatten(
+  flesh,
+  skeleton = attr(flesh, "skeleton"),
+  exclude = attr(flesh, "exclude")
+)
 }
 \arguments{
 \item{x}{parameter set as typically found in \code{opt[[1]]\$par},

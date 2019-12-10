@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2019-07-05 r76784) -- "Unsuffered Consequences"
+R Under development (unstable) (2019-12-09 r77545) -- "Unsuffered Consequences"
 Copyright (C) 2019 The R Foundation for Statistical Computing
 Platform: x86_64-pc-linux-gnu (64-bit)
 
@@ -20,18 +20,6 @@ Type 'q()' to quit R.
 > pkgname <- "durmod"
 > source(file.path(R.home("share"), "R", "examples-header.R"))
 > options(warn = 1)
-> base::assign(".ExTimings", "durmod-Ex.timings", pos = 'CheckExEnv')
-> base::cat("name\tuser\tsystem\telapsed\n", file=base::get(".ExTimings", pos = 'CheckExEnv'))
-> base::assign(".format_ptime",
-+ function(x) {
-+   if(!is.na(x[4L])) x[1L] <- x[1L] + x[4L]
-+   if(!is.na(x[5L])) x[2L] <- x[2L] + x[5L]
-+   options(OutDec = '.')
-+   format(x[1L:3L], digits = 7L)
-+ },
-+ pos = 'CheckExEnv')
-> 
-> ### * </HEADER>
 > library('durmod')
 > 
 > base::assign(".oldSearch", base::search(), pos = 'CheckExEnv')
@@ -42,7 +30,6 @@ Type 'q()' to quit R.
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: a2p
 > ### Title: Convert probability parameters to probabilities
 > ### Aliases: a2p p2a
@@ -63,15 +50,12 @@ Type 'q()' to quit R.
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("a2p", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("datagen")
 > ### * datagen
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: datagen
 > ### Title: Generate example data
 > ### Aliases: datagen
@@ -98,47 +82,44 @@ Type 'q()' to quit R.
 > Fit <- mphcrm(d ~ x1+x2 + ID(id) + D(duration) + S(alpha+1) + C(job,alpha),
 +           data=dataset, risksets=risksets,
 +           control=mphcrm.control(threads=1,iters=2))
-mphcrm 22:24:43 i:1 p:1 L:-18110.6717 g:7.53e-06 mp:1 rc:0.035 e:-0.0000 t:0.3s
-mphcrm 22:24:43 i:2 p:2 L:-17630.5327 g:8.92e-06 mp:0.46941 rc:0.0094 e:0.6913 t:0.8s
+mphcrm 10:30:53 i:1 p:1 L:-18110.6717 g:7.53e-06 mp:1 rc:0.035 e:-0.0000 t:0.3s
+mphcrm 10:30:54 i:2 p:2 L:-17630.5327 g:2.16e-05 mp:0.46941 rc:0.0094 e:0.6913 t:0.8s
 > best <- Fit[[1]]
 > print(best)
 Estimate with 2 points, log-likelihood: -17630.5327
      job.x1      job.x2   job.alpha  program.x1  program.x2 
- 0.98920819 -0.88030436 -0.07639305  1.01366789  0.43936468 
+ 0.98920818 -0.88030436 -0.07639305  1.01366788  0.43936468 
 
 Proportional hazard distribution
               prob        job    program
-point  1 0.5305943 0.18769612 0.11557384
-point  2 0.4694058 0.03554701 0.02551425
+point  1 0.5305943 0.18769613 0.11557384
+point  2 0.4694058 0.03554702 0.02551425
 > summary(best)
 $loglik
 [1] -17630.53
 
 $coefs
                  value         se         t      Pr(>|t|)
-job.x1      0.98920819 0.01886271  52.44252  0.000000e+00
-job.x2     -0.88030436 0.01944638 -45.26829  0.000000e+00
-job.alpha  -0.07639305 0.04488823  -1.70185  8.881962e-02
-program.x1  1.01366789 0.02594896  39.06391 2.190876e-307
-program.x2  0.43936468 0.02679311  16.39842  1.567139e-59
+job.x1      0.98920818 0.01886271  52.44253  0.000000e+00
+job.x2     -0.88030436 0.01944638 -45.26830  0.000000e+00
+job.alpha  -0.07639305 0.04488823  -1.70185  8.881963e-02
+program.x1  1.01366788 0.02594896  39.06391 2.190845e-307
+program.x2  0.43936468 0.02679311  16.39842  1.567129e-59
 
 $moments
               mean    variance         sd
-job     0.11627645 0.005765670 0.07593201
+job     0.11627646 0.005765670 0.07593201
 program 0.07329935 0.002020091 0.04494542
 
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("datagen", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("durdata")
 > ### * durdata
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: durdata
 > ### Title: Duration data
 > ### Aliases: durdata fit
@@ -211,15 +192,12 @@ program 0.08489246 0.009307573 0.09647576
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("durdata", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("geninv")
 > ### * geninv
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: geninv
 > ### Title: Moore-Penrose generalized inverse
 > ### Aliases: geninv
@@ -236,19 +214,16 @@ program 0.08489246 0.009307573 0.09647576
 [2,]  0.11924663  0.1303762  0.03652770 -0.0006297084  0.12310145
 [3,] -0.26835799 -0.9237478  0.18303012  0.3658260875 -0.61478567
 [4,] -0.04643329 -0.1031814  0.12320759  0.6735326801 -0.05544032
-[5,]  0.38760462  1.0541240 -0.14650242 -0.3664557958          NA
+[5,]  0.38760462  1.0541240 -0.14650242 -0.3664557958  0.73788712
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("geninv", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("mphcrm")
 > ### * mphcrm
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: mphcrm
 > ### Title: Estimate a mixed proportional hazard model
 > ### Aliases: mphcrm
@@ -267,38 +242,35 @@ program 0.08489246 0.009307573 0.09647576
 > risksets <- list(c('job','program'), c('job'))
 > Fit <- mphcrm(d ~ x1+x2 + C(job,alpha) + ID(id) + D(duration) + S(alpha+1), data=durdata, 
 +      risksets=risksets, control=mphcrm.control(threads=1,iters=2))
-mphcrm 22:24:44 i:1 p:1 L:-23397.2902 g:7.42e-07 mp:1 rc:0.024 e:-0.0000 t:0.4s
-mphcrm 22:24:45 i:2 p:2 L:-22568.1711 g:3.45e-05 mp:0.33279 rc:0.01 e:0.6361 t:0.9s
+mphcrm 10:30:55 i:1 p:1 L:-23397.2902 g:1.8e-05 mp:1 rc:0.024 e:-0.0000 t:0.4s
+mphcrm 10:30:56 i:2 p:2 L:-22568.1711 g:6.05e-06 mp:0.33279 rc:0.01 e:0.6361 t:0.9s
 > best <- Fit[[1]]
 > summary(best)
 $loglik
 [1] -22568.17
 
 $coefs
-                 value         se           t     Pr(>|t|)
-job.x1      0.99014874 0.01602300  61.7954798 0.000000e+00
-job.x2     -0.95838784 0.01774888 -53.9970972 0.000000e+00
-job.alpha  -0.03352005 0.03936906  -0.8514313 3.945483e-01
-program.x1  0.98379118 0.01992627  49.3715734 0.000000e+00
-program.x2  0.33475435 0.02102882  15.9188353 1.994255e-56
+                value         se           t     Pr(>|t|)
+job.x1      0.9901487 0.01602300  61.7954813 0.000000e+00
+job.x2     -0.9583878 0.01774888 -53.9970982 0.000000e+00
+job.alpha  -0.0335200 0.03936906  -0.8514298 3.945491e-01
+program.x1  0.9837912 0.01992627  49.3715726 0.000000e+00
+program.x2  0.3347543 0.02102882  15.9188350 1.994264e-56
 
 $moments
               mean    variance         sd
-job     0.11061256 0.003609301 0.06007746
+job     0.11061255 0.003609301 0.06007746
 program 0.07106368 0.001161028 0.03407386
 
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("mphcrm", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("mphcrm.callback")
 > ### * mphcrm.callback
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: mphcrm.callback
 > ### Title: Default callback function for mphcrm
 > ### Aliases: mphcrm.callback
@@ -317,18 +289,15 @@ program 0.07106368 0.001161028 0.03407386
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("mphcrm.callback", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("mphdist")
 > ### * mphdist
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: mphdist
 > ### Title: Extract the mixed proportional hazard distribution
-> ### Aliases: mphdist mphdist.log mphmoments mphmoments.log mphcov
+> ### Aliases: mphdist mphdist.log mphmoments mphmoments.log mphcov mphmedian
 > ###   mphcov.log
 > 
 > ### ** Examples
@@ -360,15 +329,12 @@ program 0.438489 0.9104734
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("mphdist", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("smashlevels")
 > ### * smashlevels
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: smashlevels
 > ### Title: Collapse levels of a factor
 > ### Aliases: smashlevels
@@ -376,15 +342,15 @@ program 0.438489 0.9104734
 > ### ** Examples
 > 
 > # create a factor with levels 30:60
-> f <- factor(sample(30:60, 200, replace=TRUE))
+> age <- factor(sample(30:60, 200, replace=TRUE))
 > # combine 35-40 into a single level, 41-50 into a single level, and 51-60 into a single level
-> g <- smashlevels(f, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
+> g <- smashlevels(age, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
 > table(g)
 g
    30    31    32    33    34 35-40 41-50 51-60 
     9     5     5     3     4    46    67    61 
 > # If the syntax permits, the backticks can be avoided.
-> h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
+> h <- smashlevels(age, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
 > table(h)
 h
      young  pushing40  pushing50 fossilized 
@@ -392,15 +358,12 @@ h
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("smashlevels", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > cleanEx()
 > nameEx("timestr")
 > ### * timestr
 > 
 > flush(stderr()); flush(stdout())
 > 
-> base::assign(".ptime", proc.time(), pos = "CheckExEnv")
 > ### Name: timestr
 > ### Title: Prettyprint a time interval
 > ### Aliases: timestr
@@ -416,14 +379,12 @@ h
 > 
 > 
 > 
-> base::assign(".dptime", (proc.time() - get(".ptime", pos = "CheckExEnv")), pos = "CheckExEnv")
-> base::cat("timestr", base::get(".format_ptime", pos = 'CheckExEnv')(get(".dptime", pos = "CheckExEnv")), "\n", file=base::get(".ExTimings", pos = 'CheckExEnv'), append=TRUE, sep="\t")
 > ### * <FOOTER>
 > ###
 > cleanEx()
 > options(digits = 7L)
 > base::cat("Time elapsed: ", proc.time() - base::get("ptime", pos = 'CheckExEnv'),"\n")
-Time elapsed:  3.412 0.1 3.533 0 0 
+Time elapsed:  3.174 0.073 3.267 0 0 
 > grDevices::dev.off()
 null device 
           1 

@@ -21,7 +21,7 @@
 #' So the full likelihood for an individual is \eqn{L_i = \sum_j p_j M_i(\mu_j)}.
 #'
 #' The \code{mphcrm()} function maximizes the likelihood \eqn{\sum_i L_i} over
-#' \eqn{p_j}, \eqn{mu_j}, and \eqn{\beta}.
+#' \eqn{p_j}, \eqn{\mu_j}, and \eqn{\beta}.
 #'
 #' In addition to the covariates specified by a formula, a variable which records the duration of each
 #' observation must be specified.
@@ -39,7 +39,7 @@
 #' no transition, and otherwise \code{d} is the number of the transition which is taken.
 #' \code{d} can also be a factor, in which case the level which is no transition must be named
 #' \code{"0"} or \code{"none"}. If \code{d} is an integer, the levels for transitions will be named
-#' \code{"t1"}, \code{"t2"}, .... And \code{"none"}.
+#' \code{"t1"}, \code{"t2"}, ..., and \code{"none"}.
 #'
 #' The \code{x1+x2} part is like in \code{\link{lm}}, i.e. ordinary covariates or factors.
 #'
@@ -56,7 +56,7 @@
 #' If the covariates differ among the transitions, one can specify covariates conditional on
 #' the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should only explain transition to
 #' job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
-#' Then name \code{job} refers to a level in \code{d}, the transition taken. 
+#' The name "\code{job}" refers to a level in the factor \code{d}, the transition taken. 
 #' @param data
 #' A data frame which contains the covariates. It must be sorted on individuals.
 #' @param timing
@@ -163,7 +163,7 @@ mphcrm <- function(formula,data,risksets=NULL,
 #' parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
 #' \itemize{
 #' \item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}.
-#' \item iters. integer. How many iterations should we maximally run. Defaults to 12.
+#' \item iters. integer. How many iterations should we maximally run. Defaults to 50.
 #' \item ll.improve. numeric. How much must the log-likelihood improve from the last iteration before
 #'   termination. Defaults to 0.001.
 #' \item newpoint.maxtime. numeric. For how many seconds should a global search for a new point

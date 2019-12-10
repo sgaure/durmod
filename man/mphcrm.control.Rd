@@ -10,7 +10,7 @@ mphcrm.control(...)
 \item{...}{parameters that can be adjusted. See the \code{vignette("whatmph")} for more details.
 \itemize{
 \item threads. integer. The number of threads to use. Defaults to \code{getOption('durmod.threads')}.
-\item iters. integer. How many iterations should we maximally run. Defaults to 12.
+\item iters. integer. How many iterations should we maximally run. Defaults to 50.
 \item ll.improve. numeric. How much must the log-likelihood improve from the last iteration before
   termination. Defaults to 0.001.
 \item newpoint.maxtime. numeric. For how many seconds should a global search for a new point

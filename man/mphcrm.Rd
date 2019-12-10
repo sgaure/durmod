@@ -4,8 +4,15 @@
 \alias{mphcrm}
 \title{Estimate a mixed proportional hazard model}
 \usage{
-mphcrm(formula, data, risksets = NULL, timing = c("exact", "interval",
-  "none"), subset, na.action, control = mphcrm.control())
+mphcrm(
+  formula,
+  data,
+  risksets = NULL,
+  timing = c("exact", "interval", "none"),
+  subset,
+  na.action,
+  control = mphcrm.control()
+)
 }
 \arguments{
 \item{formula}{A formula specifying the covariates.
@@ -14,7 +21,7 @@ the \code{d} is the transition which is taken, coded as an integer where \code{0
 no transition, and otherwise \code{d} is the number of the transition which is taken.
 \code{d} can also be a factor, in which case the level which is no transition must be named
 \code{"0"} or \code{"none"}. If \code{d} is an integer, the levels for transitions will be named
-\code{"t1"}, \code{"t2"}, .... And \code{"none"}.
+\code{"t1"}, \code{"t2"}, ..., and \code{"none"}.
 
 The \code{x1+x2} part is like in \code{\link{lm}}, i.e. ordinary covariates or factors.
 
@@ -31,7 +38,7 @@ inside them.
 If the covariates differ among the transitions, one can specify covariates conditional on
 the transition taken. If e.g. the covariates \code{alpha} and \code{x3} should only explain transition to
 job, specify \code{C(job, alpha+x3)}. This comes in addition to the ordinary covariates.
-Then name \code{job} refers to a level in \code{d}, the transition taken.}
+The name "\code{job}" refers to a level in the factor \code{d}, the transition taken.}
 
 \item{data}{A data frame which contains the covariates. It must be sorted on individuals.}
 
@@ -81,7 +88,7 @@ for each such \eqn{j}.
 So the full likelihood for an individual is \eqn{L_i = \sum_j p_j M_i(\mu_j)}.
 
 The \code{mphcrm()} function maximizes the likelihood \eqn{\sum_i L_i} over
-\eqn{p_j}, \eqn{mu_j}, and \eqn{\beta}.
+\eqn{p_j}, \eqn{\mu_j}, and \eqn{\beta}.
 
 In addition to the covariates specified by a formula, a variable which records the duration of each
 observation must be specified.

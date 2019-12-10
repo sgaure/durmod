@@ -231,13 +231,13 @@ timestr <- function(t) {
 #' of old levels in the factor \code{f} which should be combined into the new level
 #' @examples
 #' # create a factor with levels 30:60
-#' f <- factor(sample(30:60, 200, replace=TRUE))
+#' age <- factor(sample(30:60, 200, replace=TRUE))
 #' # combine 35-40 into a single level, 41-50 into a single level, and 51-60 into a single level
 #  # levels 30-34 are left as is. Note the backticks, necessary because these must be parsed as names.
-#' g <- smashlevels(f, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
+#' g <- smashlevels(age, list(`35-40` = 35:40, `41-50` = 41:50, `51-60` = 51:60))
 #' table(g)
 #' # If the syntax permits, the backticks can be avoided.
-#' h <- smashlevels(f, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
+#' h <- smashlevels(age, list(young=30:34, pushing40 = 35:40, pushing50 = 41:50, fossilized = 51:120))
 #' table(h)
 #' @export
 smashlevels <- function(f, newlevels) {
