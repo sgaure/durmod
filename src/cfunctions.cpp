@@ -5,9 +5,6 @@
 #include <R_ext/Applic.h>
 #include <Rcpp.h>
 #include <stdlib.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 #include <string.h>
 // [[Rcpp::plugins(cpp11)]
 // [[Rcpp::plugins(openmp)]]
